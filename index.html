@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="description" content="">
+        <meta name="author" content="">
+        <title>EdpidemViz</title>
+
+        <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
+        <!-- Latest compiled and minified CSS -->
+        <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
+
+        <!-- Optional theme -->
+        <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap-theme.min.css" integrity="sha384-rHyoN1iRsVXV4nD0JutlnGaslCJuC7uwjduW9SVrLvRYooPp2bWYgmgJQIXwl/Sp" crossorigin="anonymous">
+
+        <!-- Latest compiled and minified JavaScript -->
+        <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
+
+        <script src="https://d3js.org/d3.v3.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/underscore.js/1.8.3/underscore-min.js"></script>
+        <script type="text/javascript" src="script.js"></script>
+
+        <link rel="stylesheet" type="text/css" href="style.css">
+    </head>
+    <body>
+        <nav class="navbar navbar-inverse navbar-fixed-top" role="navigation">
+            <div class="container">
+                <div class="navbar-header">
+                    <button type="button" class="navbar-toggle" data-toggle="collapse" data-target="#bs-example-navbar-collapse-1">
+                        <span class="sr-only">Toggle navigation</span>
+                        <span class="icon-bar"></span>
+                        <span class="icon-bar"></span>
+                        <span class="icon-bar"></span>
+                    </button>
+                    <a class="navbar-brand" href="#">EdpidemViz</a>
+                </div>
+                <!-- <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
+                    <ul class="nav navbar-nav">
+                        <li>
+                            <a href="#">About</a>
+                        </li>
+                        <li>
+                            <a href="#">Services</a>
+                        </li>
+                        <li>
+                            <a href="#">Contact</a>
+                        </li>
+                    </ul>
+                </div> -->
+            </div>
+        </nav>
+        <div class="container" id="app-container">
+            <div class="row">
+                <div class="col-md-3" id="left-pane">
+                    <div class="left-pane-element" id="data-file">
+                        <fieldset>
+                            <legend>Data File</legend>
+                            <label><input type="checkbox" value="">Official</label>
+                            <label><input type="checkbox" value="">Non-official</label>
+                        </fieldset>
+                    </div>
+                    <div class="left-pane-element" id="data-type">
+                        <fieldset>
+                            <legend>Data Type</legend>
+                            <label><input type="radio" value="">Diseases</label>
+                            <label><input type="radio" value="">Host (species)</label>
+                            <label><input type="radio" value="">Symptoms</label>
+                        </fieldset>
+                    </div>
+                    <div class="left-pane-element" id="entities">
+                        <fieldset>
+                            <legend>Entities</legend>
+                            <div id="entity-diseases">
+                                <p>Diseases</p>
+                            </div>
+                            <div id="entity-host">
+                                <p>Host</p>
+                            </div>
+                            <div id="entity-symptoms">
+                                <p>Symptoms</p>
+                            </div>
+                        </fieldset>
+                    </div>
+                </div>
+                <div class="col-md-9" id="right-pane">
+                    <fieldset>
+                            <legend>Timeline</legend>
+                            <div id="timeline">
+                                
+                            </div>
+                        </fieldset>
+                </div>
+            </div>
+        </div>
+    </body>
+
+</html>

@@ -18,3 +18,24 @@
 .entities-checkbox{
 	float: left
 }
+
+
+#tooltip{
+	position: absolute;
+	top: 110px;
+	left: 1120px;
+}
+
+.tick{
+	font-size: 10px;
+}
+
+.x-axis path{
+	fill: none;
+	stroke: black;
+	stroke-width: 2px;
+}
+
+.tick line{
+	stroke: black;
+}

@@ -1,6 +1,6 @@
 $(document).ready(function() {
     var dsv = d3.dsv(";", "text/plain");
-    dsv("data/official.csv", function(error, data) {
+    dsv("/static/data/official.csv", function(error, data) {
       if (error) throw error;
       newData = processData(data);
       chart(newData, "orange");

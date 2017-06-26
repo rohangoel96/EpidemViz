@@ -57,16 +57,16 @@
                     <div class="left-pane-element" id="data-file">
                         <fieldset>
                             <legend>Data File</legend>
-                            <label><input type="checkbox" value="">Official</label>
-                            <label><input type="checkbox" value="">Non-official</label>
+                            <label><input type="radio" name="data-file" value="official" onclick="plotter(this)" checked>Official</label>
+                            <label><input type="radio" name="data-file" value="unofficial" onclick="plotter(this)">Non-official</label>
                         </fieldset>
                     </div>
                     <div class="left-pane-element" id="data-type">
                         <fieldset>
                             <legend>Data Type</legend>
-                            <label><input type="radio" value="">Diseases</label>
-                            <label><input type="radio" value="">Host (species)</label>
-                            <label><input type="radio" value="">Symptoms</label>
+                            <label><input type="radio" value="diseases" onclick="plotter(this)" name="data-type" checked>Diseases</label>
+                            <label><input type="radio" value="species" onclick="plotter(this)" name="data-type">Host (species)</label>
+                            <label><input type="radio" value="symptoms" onclick="plotter(this)" name="data-type">Symptoms</label>
                         </fieldset>
                     </div>
                     <div class="left-pane-element" id="entities">

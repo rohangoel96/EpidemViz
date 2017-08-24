@@ -2,6 +2,9 @@ $(document).ready(function() {
     plotter();
 });
 
+var margin = {top: 20, right: 40, bottom: 30, left: 30};
+var format = d3.time.format("%Y-%m-%d");
+var chartBoxWidth = 0;
 
 function plotter() {
     var dsv = d3.dsv(";", "text/plain");
@@ -9,7 +12,22 @@ function plotter() {
         +".csv", function(error, data) {
             if (error) throw error;
             newData = processData(data, $("input:radio[name=data-type]:checked").val());
-            chart(newData, "orange");
+            newData.forEach(function(d) {
+                d.date = format.parse(d.date);
+                d.value = +d.value;
+                d.key = d.key;
+            });
+
+            chartBoxWidth = $("#timeline").width() - margin.left - margin.right;
+
+            chart({
+                data: newData,
+                color: $("#color-scheme").val(),
+                margin: margin,
+                width: chartBoxWidth,
+                height: 400 - margin.top - margin.bottom
+            });
+
     });
 }
 
@@ -37,10 +55,24 @@ function processData(data, dataType) {
 
     dates = _.uniq(dates)
     keys = []
-
+    var noEntitySelected = false;
+    //check if no entity selected => select all
+    if (($('input[id^="'+dataType+'"]:checked')).length === 0) {noEntitySelected = true;}
+    
+    //disable selecting entities of other data-types
+    $('.entities-checkbox').each(function() {
+        if (dataType != this.value.split("_")[0]) {
+            $(this).prop("disabled", true);
+            $(this).prop("checked", false);
+        } else {
+            $(this).prop("disabled", false);
+            if (noEntitySelected){
+                $(this).prop("checked", true);
+            }
+        }
+    })
 
     objList =  $('input[id^="'+dataType+'"]')    
-    console.log(objList, dataType)
     for (var i = objList.length - 1; i >= 0; i--) {
         if($(objList[i]).is(":checked")){
             keys.push(objList[i].name.split(""+dataType+"_")[1])
@@ -54,8 +86,8 @@ function processData(data, dataType) {
     };
     
     dates.sort(dateSorter)
-    console.log(keys);
-    console.log(dates);
+    // console.log(keys);
+    // console.log(dates);
 
     dates.forEach(function(date) {
         processedData[date] = {}
@@ -83,10 +115,6 @@ function processData(data, dataType) {
         }
     } 
 
-    // newData.forEach(function(argument) {
-        // console.log(argument)
-    // })
-
     return newData
 }
 
@@ -110,14 +138,12 @@ function appendEntities(containerID, objList, idText) {
     }
 }
 
-function chart(data, color) {
-    var format = d3.time.format("%Y-%m-%d");
-    
-    data.forEach(function(d) {
-        d.date = format.parse(d.date);
-        d.value = +d.value;
-        d.key = d.key;
-    });
+function chart(config) {
+    var margin = config.margin;
+    var width = config.width;
+    var height = config.height;
+    var data = config.data;
+    var color = config.color;
 
     var datearray = [];
     var colorrange = [];
@@ -132,10 +158,6 @@ function chart(data, color) {
         colorrange = ["#B30000", "#E34A33", "#FC8D59", "#FDBB84", "#FDD49E", "#FEF0D9"];
     }
     strokecolor = colorrange[0];
-
-    var margin = {top: 20, right: 40, bottom: 30, left: 30};
-    var width = $("#timeline").width() - margin.left - margin.right;
-    var height = 400 - margin.top - margin.bottom;
 
     var tooltip = d3.select("body")
             .append("div")
@@ -157,8 +179,7 @@ function chart(data, color) {
             .scale(x)
             .orient("bottom")
             .tickFormat(d3.time.format("%d/%m/%y"))
-            .ticks(d3.time.weeks, 1)
-            .tickSize(10, 0);
+            .ticks(config.width/25)
 
     var stack = d3.layout.stack()
             .offset("silhouette")
@@ -181,22 +202,6 @@ function chart(data, color) {
             .attr("height", height + margin.top + margin.bottom)
             .append("g")
             .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
-
-    // var yAxis = d3.svg.axis()
-    //     .scale(y);
-
-    // var yAxisr = d3.svg.axis()
-    //     .scale(y);
-
-    // svg.append("g")
-    //   .attr("class", "y axis")
-    //   .attr("transform", "translate(" + width + ", 0)")
-    //   .call(yAxis.orient("right"));
-
-    // svg.append("g")
-    //   .attr("class", "y axis")
-    //   .call(yAxis.orient("left"));
-
 
     var layers = stack(nest.entries(data));
 
@@ -295,4 +300,30 @@ function chart(data, color) {
              vertical.style("left", mousex + "px")
          });
 
+    d3.select("#zoom-in").on("click", function() { zoomInHandler(config); });
+    d3.select("#zoom-out").on("click", function() { zoomOutHandler(config); });
+    d3.select("#color-scheme").on("change", function() { colorSchemeHandler(config); });
+}
+
+function zoomInHandler(config){
+    if (config.width * 1.2 > chartBoxWidth * 5) {
+        config.width = config.width;
+    } else {
+        config.width *= 1.2;
+    }
+    chart(config);
+}
+
+function zoomOutHandler(config){
+    if (config.width / 1.2 < chartBoxWidth) {
+        config.width = chartBoxWidth;
+    } else {
+        config.width /= 1.2;
+    }
+    chart(config);
+}
+
+function colorSchemeHandler(config){
+    config.color = d3.select("#color-scheme").node().value;
+    chart(config);
 }

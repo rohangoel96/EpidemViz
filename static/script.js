@@ -2,6 +2,7 @@ $(document).ready(function() {
     plotter();
 });
 
+var fillInMissingDates = false;  //fill in missing dates in the data
 var margin = {top: 20, right: 40, bottom: 30, left: 30};
 var format = d3.time.format("%Y-%m-%d");
 var chartBoxWidth = 0;
@@ -11,7 +12,9 @@ function plotter() {
     dsv("/static/data/"+$("input:radio[name=data-file]:checked").val()
         +".csv", function(error, data) {
             if (error) throw error;
-            newData = processData(data, $("input:radio[name=data-type]:checked").val());
+            
+            var newData = processData(data, $("input:radio[name=data-type]:checked").val());
+            
             newData.forEach(function(d) {
                 d.date = format.parse(d.date);
                 d.value = +d.value;
@@ -25,7 +28,7 @@ function plotter() {
                 color: $("#color-scheme").val(),
                 margin: margin,
                 width: chartBoxWidth,
-                height: 400 - margin.top - margin.bottom
+                height: 400 - margin.top - margin.bottom,
             });
 
     });
@@ -79,19 +82,47 @@ function processData(data, dataType) {
         }
     }
     
-    function dateSorter (a,b){
-    // Turn your strings into dates, and then subtract them
-    // to get a value that is either negative, positive, or zero.
-        return new Date(a) - new Date(b);
-    };
-    
-    dates.sort(dateSorter)
-    // console.log(keys);
-    // console.log(dates);
+        
+    if (fillInMissingDates){
+        // calculate the minimum and the maximum dates
+        // and then calculate and fill in the missing dates in between
+        var minDate = new Date(dates.reduce(function (a, b) { return a < b ? a : b; }));
+        var maxDate = new Date(dates.reduce(function (a, b) { return a > b ? a : b; }));
+        
+        //helper function for getDates()
+        Date.prototype.addDays = function(days) {
+            var dat = new Date(this.valueOf())
+            dat.setDate(dat.getDate() + days);
+            return dat;
+        }
+
+        //returns a list of dates between 2 dates
+        function getDates(startDate, stopDate) {
+            var localDateArray = new Array();
+            var currentDate = startDate;
+            localDateArray.push((new Date (currentDate)).toISOString().split('T')[0])
+            while (currentDate <= stopDate) {
+                currentDate = currentDate.addDays(1);
+                localDateArray.push((new Date (currentDate)).toISOString().split('T')[0])
+            }
+            return localDateArray;
+        }
+
+        dates = getDates(minDate, maxDate);        
+    } else {
+        function dateSorter (a,b){
+        // Turn your strings into dates, and then subtract them
+        // to get a value that is either negative, positive, or zero.
+            return new Date(a) - new Date(b);
+        };
+
+        dates.sort(dateSorter)
+    }
 
     dates.forEach(function(date) {
         processedData[date] = {}
         keys.forEach(function(key) {
+            //default each value to zero
             processedData[date][key] = 0
         })
     })
@@ -99,25 +130,29 @@ function processData(data, dataType) {
     data.map(function(d) {
         d[dataType].split(',').forEach(function(key) {
             if (keys.indexOf(key) > -1) {
+                //fill in the value
                 processedData[d.publication_date][key] += 1
             }
         })
     })
 
     newData = []
+    //add data in a sequence of dates
     for (date in processedData) {
         for (key in processedData[date]){
-            newData.push({
+            var tuple = {
                 "date": date,
                 "key": key,
                 "value": processedData[date][key]
-            })
+            }
+            newData.push(tuple)
         }
     } 
 
     return newData
 }
 
+//helper function to append entities into the left-pane
 function appendEntities(containerID, objList, idText) {
     if(!($(containerID).find('input').length > 0)) {
         _.uniq(objList).forEach(function(item) {
@@ -191,7 +226,7 @@ function chart(config) {
             .key(function(d) { return d.key; });
 
     var area = d3.svg.area()
-            .interpolate("cardinal")
+            .interpolate("basis")
             .x(function(d) { return x(d.date); })
             .y0(function(d) { return y(d.y0); })
             .y1(function(d) { return y(d.y0 + d.y); });
@@ -233,6 +268,8 @@ function chart(config) {
         }
     });
 
+    var streamValue = 0;
+
     svg.selectAll(".layer")
         .attr("opacity", 1)
         .on("mouseover", function(d, i) {
@@ -246,25 +283,42 @@ function chart(config) {
             mouse = d3.mouse(this);
             mousex = mouse[0],
             mousey = mouse[1];
-            var invertedx = x.invert(mousex);
-            invertedx = invertedx.getMonth() + invertedx.getDate();
-            var selected = (d.values);
-            for (var k = 0; k < selected.length; k++) {
-                datearray[k] = selected[k].date
-                datearray[k] = datearray[k].getMonth() + datearray[k].getDate();
+            var mouseDate = x.invert(d3.mouse(this)[0]).toISOString().split('T')[0];
+            var dataExists = false;
+
+            for (var i = d.values.length - 1; i >= 0; i--) {
+                if (d.values[i].date.toISOString().split('T')[0] == mouseDate){
+                    streamValue = d.values[i].value;
+                    dataExists = true;
+                    break;
+                }
             }
 
-            mousedate = datearray.indexOf(invertedx);
-            pro = d.values[mousedate].value;
+            if (!dataExists){
+                streamValue = -1;
+            } else {
+                d3.select(this)
+                    .classed("hover", true)
+                    .attr("stroke", strokecolor)
+                    .attr("stroke-width", "0.5px"); 
 
-            d3.select(this)
-                .classed("hover", true)
-                .attr("stroke", strokecolor)
-                .attr("stroke-width", "0.5px"); 
+                tooltip.html( "<p>" + d.key + "<br>" + streamValue + "</p>" ).style("visibility", "visible")
+                    .style("left", ($("#timeline").offset().left + mousex) +"px")
+                    .style("top", ($("#timeline").offset().top + mousey - 100) +"px");
+            }
 
-            tooltip.html( "<p>" + d.key + "<br>" + pro + "</p>" ).style("visibility", "visible")
-            .style("left", ($("#timeline").offset().left + mousex) +"px")
-            .style("top", ($("#timeline").offset().top + mousey - 100) +"px");
+            // var invertedx = x.invert(mousex);
+            // invertedx = invertedx.getMonth() + invertedx.getDate();
+            // var selected = (d.values);
+            // for (var k = 0; k < selected.length; k++) {
+            //     datearray[k] = selected[k].date
+            //     datearray[k] = datearray[k].getMonth() + datearray[k].getDate();
+            // }
+
+            // mousedate = datearray.indexOf(invertedx);
+            // streamValue = d.values[mousedate].value;
+
+
         })
         .on("mouseout", function(d, i) {
             svg.selectAll(".layer")
@@ -273,7 +327,7 @@ function chart(config) {
                 .attr("opacity", "1");
             d3.select(this)
                 .classed("hover", false)
-                .attr("stroke-width", "0px"), tooltip.html( "<p>" + d.key + "<br>" + pro + "</p>" ).style("visibility", "hidden");
+                .attr("stroke-width", "0px"), tooltip.html( "<p>" + d.key + "<br>" + streamValue + "</p>" ).style("visibility", "hidden");
         })
 
     var vertical = d3.select(".chart")
@@ -291,12 +345,12 @@ function chart(config) {
     d3.select(".chart")
         .on("mousemove", function(){  
              mousex = d3.mouse(this);
-             mousex = mousex[0] + 5;
+             mousex = mousex[0] + 16;
              vertical.style("left", mousex + "px" )
          })
         .on("mouseover", function(){  
              mousex = d3.mouse(this);
-             mousex = mousex[0] + 5;
+             mousex = mousex[0] + 16;
              vertical.style("left", mousex + "px")
          });
 

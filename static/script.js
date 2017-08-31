@@ -1,7 +1,8 @@
 $(document).ready(function() {
     plotter();
+    map = L.map('map').setView([45, 0], 1);
 });
-
+var markers = new L.FeatureGroup();
 var fillInMissingDates = false;  //fill in missing dates in the data
 var margin = {top: 20, right: 40, bottom: 30, left: 30};
 var format = d3.time.format("%Y-%m-%d");
@@ -14,15 +15,16 @@ function plotter() {
             if (error) throw error;
             
             var newData = processData(data, $("input:radio[name=data-type]:checked").val());
-            
             newData.forEach(function(d) {
                 d.date = format.parse(d.date);
                 d.value = +d.value;
                 d.key = d.key;
             });
 
-            chartBoxWidth = $("#timeline").width() - margin.left - margin.right;
+            mapUpdate(newData);
 
+            var markers = new L.FeatureGroup();
+            chartBoxWidth = $("#timeline").width() - margin.left - margin.right;
             chart({
                 data: newData,
                 color: $("#color-scheme").val(),
@@ -32,6 +34,29 @@ function plotter() {
             });
 
     });
+}
+
+function mapUpdate(data) {
+    markers.clearLayers();
+
+    L.tileLayer('http://{s}.tile.osm.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; <a href="http://osm.org/copyright">OpenStreetMap</a> contributors'
+    }).addTo(map);
+
+    data.forEach(function(item){
+        if (item.location.length > 0) {
+            item.location.forEach(function(location) {
+                var circle = L.circle(location, {
+                    color: 'red',
+                    fillColor: '#f03',
+                    fillOpacity: 0.5,
+                    radius: 500
+                })
+                markers.addLayer(circle);
+            })
+        }
+    })
+    map.addLayer(markers);
 }
 
 function processData(data, dataType) {
@@ -123,7 +148,9 @@ function processData(data, dataType) {
         processedData[date] = {}
         keys.forEach(function(key) {
             //default each value to zero
-            processedData[date][key] = 0
+            processedData[date][key] = {}
+            processedData[date][key]["value"] = 0
+            processedData[date][key]["location"] = []
         })
     })
 
@@ -131,7 +158,8 @@ function processData(data, dataType) {
         d[dataType].split(',').forEach(function(key) {
             if (keys.indexOf(key) > -1) {
                 //fill in the value
-                processedData[d.publication_date][key] += 1
+                processedData[d.publication_date][key]["value"] += 1
+                processedData[d.publication_date][key]["location"].push([d.latitude, d.longitude])
             }
         })
     })
@@ -143,7 +171,8 @@ function processData(data, dataType) {
             var tuple = {
                 "date": date,
                 "key": key,
-                "value": processedData[date][key]
+                "value": processedData[date][key]["value"],
+                "location": processedData[date][key]["location"]
             }
             newData.push(tuple)
         }
@@ -337,20 +366,21 @@ function chart(config) {
             .style("z-index", "19")
             .style("width", "1px")
             .style("height", "380px")
-            .style("top", "10px")
+            .style("top", "470px")
             .style("bottom", "30px")
             .style("left", "0px")
-            .style("background", "#fff");
+            .style("color", "#aaa")
+            .style("background", "#aaa");
 
     d3.select(".chart")
         .on("mousemove", function(){  
              mousex = d3.mouse(this);
-             mousex = mousex[0] + 16;
+             mousex = mousex[0] + 18;
              vertical.style("left", mousex + "px" )
          })
         .on("mouseover", function(){  
              mousex = d3.mouse(this);
-             mousex = mousex[0] + 16;
+             mousex = mousex[0] + 18;
              vertical.style("left", mousex + "px")
          });
 

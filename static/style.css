@@ -60,7 +60,7 @@
 
 #zoom-container{
 	position: absolute;
-    top: 45px;
+    top: 410px;
     right: 10px;
 }
 
@@ -69,4 +69,10 @@
     font-size: 12px;
     display: inline-block;
     height: 30px;
+}
+
+#map{
+	height: 350px;
+	width: 847.5px;
+	margin-bottom: 25px;
 }

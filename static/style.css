@@ -76,3 +76,7 @@
 	width: 847.5px;
 	margin-bottom: 25px;
 }
+
+.date-select-line{
+	cursor: pointer;
+}

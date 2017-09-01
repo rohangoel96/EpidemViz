@@ -7,6 +7,8 @@ var fillInMissingDates = false;  //fill in missing dates in the data
 var margin = {top: 20, right: 40, bottom: 30, left: 30};
 var format = d3.time.format("%Y-%m-%d");
 var chartBoxWidth = 0;
+var timeStartDate = -1;
+var timeEndDate = -1;
 
 function plotter() {
     var dsv = d3.dsv(";", "text/plain");
@@ -44,16 +46,18 @@ function mapUpdate(data) {
     }).addTo(map);
 
     data.forEach(function(item){
-        if (item.location.length > 0) {
-            item.location.forEach(function(location) {
-                var circle = L.circle(location, {
-                    color: 'red',
-                    fillColor: '#f03',
-                    fillOpacity: 0.5,
-                    radius: 500
+        if (item.date >= new Date(timeStartDate) && item.date <= new Date(timeEndDate)) {
+            if (item.location.length > 0) {
+                item.location.forEach(function(location) {
+                    var circle = L.circle(location, {
+                        color: 'red',
+                        fillColor: '#f03',
+                        fillOpacity: 0.5,
+                        radius: 500
+                    })
+                    markers.addLayer(circle);
                 })
-                markers.addLayer(circle);
-            })
+            }
         }
     })
     map.addLayer(markers);
@@ -143,6 +147,9 @@ function processData(data, dataType) {
 
         dates.sort(dateSorter)
     }
+
+    timeStartDate = dates[0]
+    timeEndDate = dates[dates.length - 1]
 
     dates.forEach(function(date) {
         processedData[date] = {}
@@ -359,7 +366,7 @@ function chart(config) {
                 .attr("stroke-width", "0px"), tooltip.html( "<p>" + d.key + "<br>" + streamValue + "</p>" ).style("visibility", "hidden");
         })
 
-    var vertical = d3.select(".chart")
+    var verticalHover = d3.select(".chart")
             .append("div")
             .attr("class", "remove")
             .style("position", "absolute")
@@ -372,16 +379,70 @@ function chart(config) {
             .style("color", "#aaa")
             .style("background", "#aaa");
 
+    var drag1 = d3.behavior.drag()
+           .on('dragstart', null)
+           .on('drag', function(d){
+                var dx = d3.event.dx;
+                var x1New = parseFloat(d3.select(this).attr('x1'))+ dx;
+                var x2New = parseFloat(d3.select(this).attr('x2'))+ dx;
+                if(x1New + 100 < parseFloat(verticalDateEnd.attr('x1')) && x1New > 0){
+                    verticalDateStart.attr("x1", x1New).attr("x2", x2New)
+                }
+             }).on('dragend', function(d){
+                var mouseDate = x.invert(parseFloat(d3.select(this).attr('x1'))).toISOString().split('T')[0];
+                timeStartDate = mouseDate;
+                mapUpdate(data)
+                
+             }); 
+               
+    var drag2 = d3.behavior.drag()
+       .on('dragstart', null)
+       .on('drag', function(d){
+            var dx = d3.event.dx;
+            var x1New = parseFloat(d3.select(this).attr('x1'))+ dx;
+            var x2New = parseFloat(d3.select(this).attr('x2'))+ dx;
+            if(x1New > parseFloat(verticalDateStart.attr('x1')) + 100 && x1New < chartBoxWidth){
+                verticalDateEnd.attr("x1", x1New).attr("x2", x2New)
+            }
+         }).on('dragend', function(d) {
+             var mouseDate = x.invert(parseFloat(d3.select(this).attr('x1'))).toISOString().split('T')[0];
+             timeEndDate = mouseDate;
+             mapUpdate(data);
+         }); 
+           
+
+    var verticalDateStart = svg.append("line")
+            .attr("class", "date-select-line")
+            .attr("x1", 0)
+            .attr("y1", 0)
+            .attr("x2", 0)
+            .attr("y2", 350)
+            .style("stroke-width", 4)
+            .style("stroke", "red")
+            .style("fill", "none")
+            .call(drag1);
+
+    var verticalDateEnd = svg.append("line")
+            .attr("class", "date-select-line")
+            .attr("x1", chartBoxWidth)
+            .attr("y1", 0)
+            .attr("x2", chartBoxWidth)
+            .attr("y2", 350)
+            .style("stroke-width", 4)
+            .style("stroke", "red")
+            .style("fill", "none")
+            .call(drag2);
+
     d3.select(".chart")
         .on("mousemove", function(){  
              mousex = d3.mouse(this);
              mousex = mousex[0] + 18;
-             vertical.style("left", mousex + "px" )
+             verticalHover.style("left", mousex + "px" )
          })
         .on("mouseover", function(){  
              mousex = d3.mouse(this);
              mousex = mousex[0] + 18;
-             vertical.style("left", mousex + "px")
+             verticalHover.style("left", mousex + "px")
          });
 
     d3.select("#zoom-in").on("click", function() { zoomInHandler(config); });

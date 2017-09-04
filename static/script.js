@@ -16,29 +16,41 @@ function plotter() {
         +".csv", function(error, data) {
             if (error) throw error;
             
-            var newData = processData(data, $("input:radio[name=data-type]:checked").val());
+            processedOut = processData(data, $("input:radio[name=data-type]:checked").val());
+            
+            var newData = processedOut[0]
+            var entityKeys = processedOut[1]
+            var colorrange = generateDistinctColors(entityKeys.length)
+
             newData.forEach(function(d) {
                 d.date = format.parse(d.date);
                 d.value = +d.value;
                 d.key = d.key;
             });
 
-            mapUpdate(newData);
+            mapUpdate(newData, entityKeys, colorrange);
+            //update colors for entities
+            $(".enties-label").css("color", "black")
+            $( "label[id^='label_"+$("input:radio[name=data-type]:checked").val()+"']").each(function(ind, item) {
+                $(this).css("color", colorrange[entityKeys.indexOf($(this).attr("id").split("_")[2])])
+
+            })
 
             var markers = new L.FeatureGroup();
             chartBoxWidth = $("#timeline").width() - margin.left - margin.right;
             chart({
                 data: newData,
-                color: $("#color-scheme").val(),
+                colorrange: colorrange,
                 margin: margin,
                 width: chartBoxWidth,
-                height: 400 - margin.top - margin.bottom,
+                entityKeys: entityKeys,
+                height: 350 - margin.top - margin.bottom,
             });
 
     });
 }
 
-function mapUpdate(data) {
+function mapUpdate(data, entityKeys, colorrange) {
     markers.clearLayers();
 
     L.tileLayer('http://{s}.tile.osm.org/{z}/{x}/{y}.png', {
@@ -50,11 +62,11 @@ function mapUpdate(data) {
             if (item.location.length > 0) {
                 item.location.forEach(function(location) {
                     var circle = L.circle(location, {
-                        color: 'red',
-                        fillColor: '#f03',
-                        fillOpacity: 0.5,
+                        color: colorrange[entityKeys.indexOf(item.key)],
+                        // fillColor: '#f03',
+                        // fillOpacity: 0.5,
                         radius: 500
-                    })
+                    }).bindPopup("Date: "+item.date.toISOString().split('T')[0]+"<br>Entity: "+item.key+"<br>Confidence: "+item.confidence);
                     markers.addLayer(circle);
                 })
             }
@@ -110,7 +122,6 @@ function processData(data, dataType) {
             keys.push(objList[i].name.split(""+dataType+"_")[1])
         }
     }
-    
         
     if (fillInMissingDates){
         // calculate the minimum and the maximum dates
@@ -167,6 +178,7 @@ function processData(data, dataType) {
                 //fill in the value
                 processedData[d.publication_date][key]["value"] += 1
                 processedData[d.publication_date][key]["location"].push([d.latitude, d.longitude])
+                processedData[d.publication_date][key]["confidence"] = d.confidence
             }
         })
     })
@@ -179,13 +191,14 @@ function processData(data, dataType) {
                 "date": date,
                 "key": key,
                 "value": processedData[date][key]["value"],
-                "location": processedData[date][key]["location"]
+                "location": processedData[date][key]["location"],
+                "confidence": processedData[date][key]["confidence"]
             }
             newData.push(tuple)
         }
     } 
 
-    return newData
+    return [newData, keys]
 }
 
 //helper function to append entities into the left-pane
@@ -194,6 +207,10 @@ function appendEntities(containerID, objList, idText) {
         _.uniq(objList).forEach(function(item) {
                 $(containerID).append(
                         $(document.createElement('label')).text(item)
+                        .attr({
+                            class: "enties-label",
+                            id: "label_"+idText + item
+                        })
                         .append(
                                 $(document.createElement('input')).attr({
                                         id:    idText + item,
@@ -214,20 +231,9 @@ function chart(config) {
     var width = config.width;
     var height = config.height;
     var data = config.data;
-    var color = config.color;
-
+    var colorrange = config.colorrange;
     var datearray = [];
-    var colorrange = [];
 
-    if (color == "blue") {
-        colorrange = ["#045A8D", "#2B8CBE", "#74A9CF", "#A6BDDB", "#D0D1E6", "#F1EEF6"];
-    }
-    else if (color == "pink") {
-        colorrange = ["#980043", "#DD1C77", "#DF65B0", "#C994C7", "#D4B9DA", "#F1EEF6"];
-    }
-    else if (color == "orange") {
-        colorrange = ["#B30000", "#E34A33", "#FC8D59", "#FDBB84", "#FDD49E", "#FEF0D9"];
-    }
     strokecolor = colorrange[0];
 
     var tooltip = d3.select("body")
@@ -373,7 +379,7 @@ function chart(config) {
             .style("z-index", "19")
             .style("width", "1px")
             .style("height", "380px")
-            .style("top", "470px")
+            .style("top", "420px")
             .style("bottom", "30px")
             .style("left", "0px")
             .style("color", "#aaa")
@@ -391,7 +397,7 @@ function chart(config) {
              }).on('dragend', function(d){
                 var mouseDate = x.invert(parseFloat(d3.select(this).attr('x1'))).toISOString().split('T')[0];
                 timeStartDate = mouseDate;
-                mapUpdate(data)
+                mapUpdate(data, config.entityKeys, config.colorrange)
                 
              }); 
                
@@ -407,7 +413,7 @@ function chart(config) {
          }).on('dragend', function(d) {
              var mouseDate = x.invert(parseFloat(d3.select(this).attr('x1'))).toISOString().split('T')[0];
              timeEndDate = mouseDate;
-             mapUpdate(data);
+             mapUpdate(data, config.entityKeys, config.colorrange);
          }); 
            
 
@@ -416,7 +422,7 @@ function chart(config) {
             .attr("x1", 0)
             .attr("y1", 0)
             .attr("x2", 0)
-            .attr("y2", 350)
+            .attr("y2", 300)
             .style("stroke-width", 4)
             .style("stroke", "red")
             .style("fill", "none")
@@ -427,7 +433,7 @@ function chart(config) {
             .attr("x1", chartBoxWidth)
             .attr("y1", 0)
             .attr("x2", chartBoxWidth)
-            .attr("y2", 350)
+            .attr("y2", 300)
             .style("stroke-width", 4)
             .style("stroke", "red")
             .style("fill", "none")

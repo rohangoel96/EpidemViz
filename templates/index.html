@@ -101,6 +101,12 @@
                     </div>
                 </div>
                 <div class="col-md-9" id="right-pane">
+                    <legend>Geographical Map</legend>
+                            <span id="lasso-container">
+                                <span id="lasso-head">Lasso: </span>
+                                <span id="lasso-enable" class="lasso-controller"><a href="#" onclick="lassoEnableHandler(this);return false;">Enable</a></span>
+                                <span id="lasso-reset" class="lasso-controller"><a href="#" onclick="javascript:lasso.reset();d3.select('.chart svg').selectAll('.date-lasso-line').remove();return false;">Reset</a></span>
+                            </span>
                     <div id="map">
                     
                     </div>
@@ -126,6 +132,7 @@
                 </div>
             </div>
         </div>
+        <script type="text/javascript" src="static/util/lasso.js"></script>
         <script type="text/javascript" src="static/script.js"></script>
     </body>
 

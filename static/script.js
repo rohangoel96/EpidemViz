@@ -1,14 +1,25 @@
 $(document).ready(function() {
     plotter();
     map = L.map('map').setView([45, 0], 1);
+    lasso = L.lassoSelect({
+        activeTooltip:"Click to start the lasso selection",
+        startedTooltip:"Select more points",
+        readyTooltip:"Complete a loop of the lasso selection",
+        finishedTooltip: "Completed Lasso Selection"
+    }).addTo(map);
+    lasso.on('pathchange', lassoHandler);
 });
 var markers = new L.FeatureGroup();
+var markersArray = []
 var fillInMissingDates = false;  //fill in missing dates in the data
 var margin = {top: 20, right: 40, bottom: 30, left: 30};
 var format = d3.time.format("%Y-%m-%d");
 var chartBoxWidth = 0;
 var timeStartDate = -1;
 var timeEndDate = -1;
+var width;
+var entityKeys;
+var colorrange;
 
 function plotter() {
     var dsv = d3.dsv(";", "text/plain");
@@ -19,8 +30,8 @@ function plotter() {
             processedOut = processData(data, $("input:radio[name=data-type]:checked").val());
             
             var newData = processedOut[0]
-            var entityKeys = processedOut[1]
-            var colorrange = generateDistinctColors(entityKeys.length)
+            entityKeys = processedOut[1]
+            colorrange = generateDistinctColors(entityKeys.length)
 
             newData.forEach(function(d) {
                 d.date = format.parse(d.date);
@@ -52,6 +63,7 @@ function plotter() {
 
 function mapUpdate(data, entityKeys, colorrange) {
     markers.clearLayers();
+    markersArray = []
 
     L.tileLayer('http://{s}.tile.osm.org/{z}/{x}/{y}.png', {
     attribution: '&copy; <a href="http://osm.org/copyright">OpenStreetMap</a> contributors'
@@ -68,6 +80,11 @@ function mapUpdate(data, entityKeys, colorrange) {
                         radius: 500
                     }).bindPopup("Date: "+item.date.toISOString().split('T')[0]+"<br>Entity: "+item.key+"<br>Confidence: "+item.confidence);
                     markers.addLayer(circle);
+                    markersArray.push({
+                        marker: circle,
+                        date: item.date,
+                        key: item.key
+                    })
                 })
             }
         }
@@ -228,7 +245,7 @@ function appendEntities(containerID, objList, idText) {
 
 function chart(config) {
     var margin = config.margin;
-    var width = config.width;
+    width = config.width;
     var height = config.height;
     var data = config.data;
     var colorrange = config.colorrange;
@@ -378,8 +395,8 @@ function chart(config) {
             .style("position", "absolute")
             .style("z-index", "19")
             .style("width", "1px")
-            .style("height", "380px")
-            .style("top", "420px")
+            .style("height", "300px")
+            .style("top", "520px")
             .style("bottom", "30px")
             .style("left", "0px")
             .style("color", "#aaa")
@@ -424,7 +441,7 @@ function chart(config) {
             .attr("x2", 0)
             .attr("y2", 300)
             .style("stroke-width", 4)
-            .style("stroke", "red")
+            .style("stroke", "black")
             .style("fill", "none")
             .call(drag1);
 
@@ -435,7 +452,7 @@ function chart(config) {
             .attr("x2", chartBoxWidth)
             .attr("y2", 300)
             .style("stroke-width", 4)
-            .style("stroke", "red")
+            .style("stroke", "black")
             .style("fill", "none")
             .call(drag2);
 
@@ -477,4 +494,51 @@ function zoomOutHandler(config){
 function colorSchemeHandler(config){
     config.color = d3.select("#color-scheme").node().value;
     chart(config);
+}
+
+function lassoHandler(){
+    var path = lasso.getPath();
+    // or check if a point is inside the selected path
+    var items = []
+    markersArray.forEach(function(item) {
+    if (lasso.contains(item.marker.getLatLng())) {
+        items.push(item)
+        }
+    })
+
+    lassoTimelineHighlight(items)
+
+}
+
+function lassoEnableHandler(item){
+    if ($("#lasso-enable a")[0].text == "Enable") {
+        lasso.enable();
+        $("#lasso-enable a")[0].text = "Disable"
+    } else {
+        lasso.disable();
+        d3.select(".chart svg").selectAll(".date-lasso-line").remove()
+        $("#lasso-enable a")[0].text = "Enable"
+    }
+}
+
+function lassoTimelineHighlight(items){
+    var svg = d3.select(".chart svg");
+    var x = d3.time.scale()
+            .domain([new Date(timeStartDate), new Date(timeEndDate)])
+            .range([0, width]);
+
+    items.forEach(function(item){
+        svg.append("line")
+            .attr("class", "date-lasso-line")
+            .attr("x1", margin.left + x(new Date(item.date)))
+            .attr("y1", margin.top)
+            .attr("x2", margin.left + x(new Date(item.date)))
+            .attr("y2", margin.top + 300)
+            .style("stroke-width", 2)
+            .style("stroke", colorrange[entityKeys.indexOf(item.key)])
+            .style("fill", "none");
+
+    })
+
+
 }

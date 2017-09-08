@@ -1,6 +1,7 @@
 $(document).ready(function() {
     plotter();
     map = L.map('map').setView([45, 0], 1);
+    map.on('zoomend', mapZoomHandler)
     lasso = L.lassoSelect({
         activeTooltip:"Click to start the lasso selection",
         startedTooltip:"Select more points",
@@ -39,7 +40,6 @@ function plotter() {
                 d.key = d.key;
             });
 
-            var markers = new L.FeatureGroup();
             chartBoxWidth = $("#timeline").width() - margin.left - margin.right;
             var config = {
                 data: processedDataList,
@@ -94,7 +94,8 @@ function mapUpdate(config, trimmingBool=false) {
                 item.location.forEach(function(location) {
                     var circle = L.circle(location, {
                         color: colorrange[entityKeys.indexOf(item.key)],
-                        radius: 500
+                        fill: colorrange[entityKeys.indexOf(item.key)],
+                        radius: 5000
                     }).bindPopup("Date: "+item.date.toISOString().split('T')[0]+"<br>Entity: "+item.key+"<br>Confidence: "+item.confidence);
                     markers.addLayer(circle);
                     markersArray.push({
@@ -565,4 +566,24 @@ function giveNearestDate(mouseDate, datesArr){
         }
     })
     return minDateDiff;
+}
+
+function mapZoomHandler() {
+    var currentZoom = map.getZoom();
+    var radiusMultiplier;
+
+    if (currentZoom <=1){ 
+        radiusMultiplier = 1
+    } else if (currentZoom <= 3) {
+        radiusMultiplier = currentZoom + 2; 
+    } else if (currentZoom <= 7) {
+        radiusMultiplier = currentZoom + 1;
+    } else { 
+        radiusMultiplier = 8;
+    }
+    
+    markersArray.forEach(function(item) {
+        item.marker.setRadius(5000 * radiusMultiplier)
+        markers.addLayer(item.marker)
+    })
 }

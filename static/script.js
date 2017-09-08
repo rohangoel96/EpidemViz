@@ -12,14 +12,14 @@ $(document).ready(function() {
 var markers = new L.FeatureGroup();
 var markersArray = []
 var fillInMissingDates = false;  //fill in missing dates in the data
-var margin = {top: 20, right: 40, bottom: 30, left: 30};
+var margin = {top: 20, right: 0, bottom: 30, left: 0};
 var format = d3.time.format("%Y-%m-%d");
 var chartBoxWidth = 0;
 var timeStartDate = -1;
 var timeEndDate = -1;
 var width;
-var entityKeys;
-var colorrange;
+var trimStartDate = -1
+var trimEndDate = -1
 
 function plotter() {
     var dsv = d3.dsv(";", "text/plain");
@@ -29,39 +29,45 @@ function plotter() {
             
             processedOut = processData(data, $("input:radio[name=data-type]:checked").val());
             
-            var newData = processedOut[0]
+            var processedDataList = processedOut[0]
             entityKeys = processedOut[1]
             colorrange = generateDistinctColors(entityKeys.length)
 
-            newData.forEach(function(d) {
+            processedDataList.forEach(function(d) {
                 d.date = format.parse(d.date);
                 d.value = +d.value;
                 d.key = d.key;
             });
 
-            mapUpdate(newData, entityKeys, colorrange);
-            //update colors for entities
-            $(".enties-label").css("color", "black")
-            $( "label[id^='label_"+$("input:radio[name=data-type]:checked").val()+"']").each(function(ind, item) {
-                $(this).css("color", colorrange[entityKeys.indexOf($(this).attr("id").split("_")[2])])
-
-            })
-
             var markers = new L.FeatureGroup();
             chartBoxWidth = $("#timeline").width() - margin.left - margin.right;
-            chart({
-                data: newData,
+            var config = {
+                data: processedDataList,
                 colorrange: colorrange,
                 margin: margin,
                 width: chartBoxWidth,
                 entityKeys: entityKeys,
                 height: 350 - margin.top - margin.bottom,
-            });
+                dataDateDict: processedOut[2],
+                dates : processedOut[3]
+            }
 
+            mapUpdate(config);
+            chart(config);
+
+            //update colors for entities
+            $(".enties-label").css("color", "black")
+            $( "label[id^='label_"+$("input:radio[name=data-type]:checked").val()+"']").each(function(ind, item) {
+                $(this).css("color", colorrange[entityKeys.indexOf($(this).attr("id").split("_")[2])])
+            })
     });
 }
 
-function mapUpdate(data, entityKeys, colorrange) {
+function mapUpdate(config, trimmingBool=false) {
+    var data = config.data;
+    var entityKeys = config.entityKeys;
+    var colorrange = config.colorrange;
+
     markers.clearLayers();
     markersArray = []
 
@@ -70,13 +76,24 @@ function mapUpdate(data, entityKeys, colorrange) {
     }).addTo(map);
 
     data.forEach(function(item){
-        if (item.date >= new Date(timeStartDate) && item.date <= new Date(timeEndDate)) {
+        var startDate;
+        var endDate;
+        if(trimmingBool){
+            startDate = new Date(trimStartDate)
+            endDate = new Date(trimEndDate)
+            if (trimStartDate == -1) startDate = new Date(timeStartDate)
+            if (trimEndDate == -1) endDate = new Date(timeEndDate)
+
+        } else {
+            startDate = new Date(timeStartDate)
+            endDate = new Date(timeEndDate)
+        }
+
+        if (item.date >= startDate && item.date <= endDate) {
             if (item.location.length > 0) {
                 item.location.forEach(function(location) {
                     var circle = L.circle(location, {
                         color: colorrange[entityKeys.indexOf(item.key)],
-                        // fillColor: '#f03',
-                        // fillOpacity: 0.5,
                         radius: 500
                     }).bindPopup("Date: "+item.date.toISOString().split('T')[0]+"<br>Entity: "+item.key+"<br>Confidence: "+item.confidence);
                     markers.addLayer(circle);
@@ -97,7 +114,7 @@ function processData(data, dataType) {
             diseases = [],
             symptoms = []
             dates = [],
-            processedData ={}, 
+            dataDateDict ={}, 
             keys = [];
     
     data.map(function(d) {
@@ -180,12 +197,12 @@ function processData(data, dataType) {
     timeEndDate = dates[dates.length - 1]
 
     dates.forEach(function(date) {
-        processedData[date] = {}
+        dataDateDict[date] = {}
         keys.forEach(function(key) {
             //default each value to zero
-            processedData[date][key] = {}
-            processedData[date][key]["value"] = 0
-            processedData[date][key]["location"] = []
+            dataDateDict[date][key] = {}
+            dataDateDict[date][key]["value"] = 0
+            dataDateDict[date][key]["location"] = []
         })
     })
 
@@ -193,29 +210,29 @@ function processData(data, dataType) {
         d[dataType].split(',').forEach(function(key) {
             if (keys.indexOf(key) > -1) {
                 //fill in the value
-                processedData[d.publication_date][key]["value"] += 1
-                processedData[d.publication_date][key]["location"].push([d.latitude, d.longitude])
-                processedData[d.publication_date][key]["confidence"] = d.confidence
+                dataDateDict[d.publication_date][key]["value"] += 1
+                dataDateDict[d.publication_date][key]["location"].push([d.latitude, d.longitude])
+                dataDateDict[d.publication_date][key]["confidence"] = d.confidence
             }
         })
     })
 
-    newData = []
+    dataList = []
     //add data in a sequence of dates
-    for (date in processedData) {
-        for (key in processedData[date]){
+    for (date in dataDateDict) {
+        for (key in dataDateDict[date]){
             var tuple = {
                 "date": date,
                 "key": key,
-                "value": processedData[date][key]["value"],
-                "location": processedData[date][key]["location"],
-                "confidence": processedData[date][key]["confidence"]
+                "value": dataDateDict[date][key]["value"],
+                "location": dataDateDict[date][key]["location"],
+                "confidence": dataDateDict[date][key]["confidence"]
             }
-            newData.push(tuple)
+            dataList.push(tuple)
         }
     } 
 
-    return [newData, keys]
+    return [dataList, keys, dataDateDict, dates]
 }
 
 //helper function to append entities into the left-pane
@@ -249,6 +266,7 @@ function chart(config) {
     var height = config.height;
     var data = config.data;
     var colorrange = config.colorrange;
+    var dataDateDict = config.dataDateDict;
     var datearray = [];
 
     strokecolor = colorrange[0];
@@ -261,6 +279,7 @@ function chart(config) {
             .style("visibility", "hidden")
 
     var x = d3.time.scale()
+            .domain([new Date(timeStartDate), new Date(timeEndDate)])   
             .range([0, width]);
 
     var y = d3.scale.linear()
@@ -328,6 +347,16 @@ function chart(config) {
     });
 
     var streamValue = 0;
+    var verticalHover = svg.append("line")
+        .attr("class", "verticalHover")
+        .attr("x1", 0)
+        .attr("y1", 0)
+        .attr("x2", 0)
+        .attr("y2", 300)
+        .style("stroke-width", 3)
+        .style("stroke-dasharray", ("5, 8"))
+        .style("stroke", "#aaa")
+        .style("fill", "none")
 
     svg.selectAll(".layer")
         .attr("opacity", 1)
@@ -335,7 +364,7 @@ function chart(config) {
             svg.selectAll(".layer").transition()
             .duration(250)
             .attr("opacity", function(d, j) {
-                return j != i ? 0.6 : 1;
+                return j != i ? 0.25 : 1;
             })
         })
         .on("mousemove", function(d, i) {
@@ -343,41 +372,25 @@ function chart(config) {
             mousex = mouse[0],
             mousey = mouse[1];
             var mouseDate = x.invert(d3.mouse(this)[0]).toISOString().split('T')[0];
-            var dataExists = false;
+            var nearestMouseDate = giveNearestDate(mouseDate, config.dates)
 
-            for (var i = d.values.length - 1; i >= 0; i--) {
-                if (d.values[i].date.toISOString().split('T')[0] == mouseDate){
-                    streamValue = d.values[i].value;
-                    dataExists = true;
-                    break;
-                }
-            }
+            var streamValue = dataDateDict[nearestMouseDate][d.key].value
+            var dateToXScale = d3.time.scale()
+                .domain([new Date(timeStartDate), new Date(timeEndDate)])
+                .range([0, width]);
 
-            if (!dataExists){
-                streamValue = -1;
-            } else {
-                d3.select(this)
-                    .classed("hover", true)
-                    .attr("stroke", strokecolor)
-                    .attr("stroke-width", "0.5px"); 
+            d3.select(this)
+                .classed("hover", true)
+                .attr("stroke", strokecolor)
+                .attr("stroke-width", "0.5px"); 
 
-                tooltip.html( "<p>" + d.key + "<br>" + streamValue + "</p>" ).style("visibility", "visible")
-                    .style("left", ($("#timeline").offset().left + mousex) +"px")
-                    .style("top", ($("#timeline").offset().top + mousey - 100) +"px");
-            }
+            verticalHover
+                .attr("x1", dateToXScale(new Date(nearestMouseDate)))
+                .attr("x2", dateToXScale(new Date(nearestMouseDate)))
 
-            // var invertedx = x.invert(mousex);
-            // invertedx = invertedx.getMonth() + invertedx.getDate();
-            // var selected = (d.values);
-            // for (var k = 0; k < selected.length; k++) {
-            //     datearray[k] = selected[k].date
-            //     datearray[k] = datearray[k].getMonth() + datearray[k].getDate();
-            // }
-
-            // mousedate = datearray.indexOf(invertedx);
-            // streamValue = d.values[mousedate].value;
-
-
+            tooltip.html( "<p>" + d.key + ": <b>" + streamValue + "</b><br><span style='font-size: 12px; position: relative; top: -3px;'>" + nearestMouseDate + "</span></p>" ).style("visibility", "visible")
+                .style("left", ($("#timeline").offset().left + dateToXScale(new Date(nearestMouseDate)) + 10) +"px")
+                .style("top", ($("#timeline").offset().top + mousey - 100) +"px");
         })
         .on("mouseout", function(d, i) {
             svg.selectAll(".layer")
@@ -389,18 +402,25 @@ function chart(config) {
                 .attr("stroke-width", "0px"), tooltip.html( "<p>" + d.key + "<br>" + streamValue + "</p>" ).style("visibility", "hidden");
         })
 
-    var verticalHover = d3.select(".chart")
-            .append("div")
-            .attr("class", "remove")
-            .style("position", "absolute")
-            .style("z-index", "19")
-            .style("width", "1px")
-            .style("height", "300px")
-            .style("top", "520px")
-            .style("bottom", "30px")
-            .style("left", "0px")
-            .style("color", "#aaa")
-            .style("background", "#aaa");
+
+    var dragRect1 = d3.select(".chart svg").append("rect")
+          .attr("x", 0)
+          .attr("y", margin.top)
+          .attr("width", 0)
+          .attr("height", 300)
+          .attr("opacity", 0.3)
+          .attr("fill", "white")
+          .attr("class", "drag-rect")
+
+    var dragRect2 = d3.select(".chart svg").append("rect")
+          .attr("x", width)
+          .attr("y", margin.top)
+          .attr("width", 0)
+          .attr("height", 300)
+          .attr("opacity", 0.3)
+          .attr("fill", "white")
+          .attr("class", "drag-rect")
+
 
     var drag1 = d3.behavior.drag()
            .on('dragstart', null)
@@ -408,14 +428,16 @@ function chart(config) {
                 var dx = d3.event.dx;
                 var x1New = parseFloat(d3.select(this).attr('x1'))+ dx;
                 var x2New = parseFloat(d3.select(this).attr('x2'))+ dx;
-                if(x1New + 100 < parseFloat(verticalDateEnd.attr('x1')) && x1New > 0){
+                if(x1New + 0.1*width < parseFloat(verticalDateEnd.attr('x1')) && x1New > 2){
                     verticalDateStart.attr("x1", x1New).attr("x2", x2New)
+                    dragRect1.attr("width", x1New - 2)
+                        .attr("opacity", 0.3)
                 }
              }).on('dragend', function(d){
                 var mouseDate = x.invert(parseFloat(d3.select(this).attr('x1'))).toISOString().split('T')[0];
-                timeStartDate = mouseDate;
-                mapUpdate(data, config.entityKeys, config.colorrange)
-                
+                trimStartDate = mouseDate;
+                mapUpdate(config, true)
+                dragRect1.attr("opacity", 0.6)
              }); 
                
     var drag2 = d3.behavior.drag()
@@ -424,21 +446,25 @@ function chart(config) {
             var dx = d3.event.dx;
             var x1New = parseFloat(d3.select(this).attr('x1'))+ dx;
             var x2New = parseFloat(d3.select(this).attr('x2'))+ dx;
-            if(x1New > parseFloat(verticalDateStart.attr('x1')) + 100 && x1New < chartBoxWidth){
+            if(x1New > parseFloat(verticalDateStart.attr('x1')) + 0.1*width && x1New < width - 2){
                 verticalDateEnd.attr("x1", x1New).attr("x2", x2New)
+                dragRect2.attr("width", width - x2New)
+                        .attr("x", x2New + 2)
+                        .attr("opacity", 0.3)
             }
          }).on('dragend', function(d) {
-             var mouseDate = x.invert(parseFloat(d3.select(this).attr('x1'))).toISOString().split('T')[0];
-             timeEndDate = mouseDate;
-             mapUpdate(data, config.entityKeys, config.colorrange);
+            var mouseDate = x.invert(parseFloat(d3.select(this).attr('x1'))).toISOString().split('T')[0];
+            trimEndDate = mouseDate;
+            mapUpdate(config, true);
+            dragRect2.attr("opacity", 0.6)
          }); 
            
 
     var verticalDateStart = svg.append("line")
             .attr("class", "date-select-line")
-            .attr("x1", 0)
+            .attr("x1", 2)
             .attr("y1", 0)
-            .attr("x2", 0)
+            .attr("x2", 2)
             .attr("y2", 300)
             .style("stroke-width", 4)
             .style("stroke", "black")
@@ -447,26 +473,14 @@ function chart(config) {
 
     var verticalDateEnd = svg.append("line")
             .attr("class", "date-select-line")
-            .attr("x1", chartBoxWidth)
+            .attr("x1", width-2)
             .attr("y1", 0)
-            .attr("x2", chartBoxWidth)
+            .attr("x2", width-2)
             .attr("y2", 300)
             .style("stroke-width", 4)
             .style("stroke", "black")
             .style("fill", "none")
             .call(drag2);
-
-    d3.select(".chart")
-        .on("mousemove", function(){  
-             mousex = d3.mouse(this);
-             mousex = mousex[0] + 18;
-             verticalHover.style("left", mousex + "px" )
-         })
-        .on("mouseover", function(){  
-             mousex = d3.mouse(this);
-             mousex = mousex[0] + 18;
-             verticalHover.style("left", mousex + "px")
-         });
 
     d3.select("#zoom-in").on("click", function() { zoomInHandler(config); });
     d3.select("#zoom-out").on("click", function() { zoomOutHandler(config); });
@@ -480,6 +494,7 @@ function zoomInHandler(config){
         config.width *= 1.2;
     }
     chart(config);
+    mapUpdate(config);
 }
 
 function zoomOutHandler(config){
@@ -489,6 +504,7 @@ function zoomOutHandler(config){
         config.width /= 1.2;
     }
     chart(config);
+    mapUpdate(config);
 }
 
 function colorSchemeHandler(config){
@@ -505,9 +521,7 @@ function lassoHandler(){
         items.push(item)
         }
     })
-
     lassoTimelineHighlight(items)
-
 }
 
 function lassoEnableHandler(item){
@@ -541,4 +555,14 @@ function lassoTimelineHighlight(items){
     })
 
 
+}
+
+function giveNearestDate(mouseDate, datesArr){
+    var minDateDiff = new Date(datesArr[0]);
+    datesArr.forEach(function (item) {
+        if(Math.abs(new Date(mouseDate) - new Date(item)) < Math.abs(new Date(mouseDate) - new Date(minDateDiff))){
+            minDateDiff = item;
+        }
+    })
+    return minDateDiff;
 }

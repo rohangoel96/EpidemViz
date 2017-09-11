@@ -80,3 +80,7 @@
 .date-select-line{
 	cursor: pointer;
 }
+
+.drag-arrow{
+	cursor: pointer;
+}

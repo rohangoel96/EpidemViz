@@ -388,6 +388,7 @@ function chart(config) {
             verticalHover
                 .attr("x1", dateToXScale(new Date(nearestMouseDate)))
                 .attr("x2", dateToXScale(new Date(nearestMouseDate)))
+                .attr("opacity", "1");
 
             tooltip.html( "<p>" + d.key + ": <b>" + streamValue + "</b><br><span style='font-size: 12px; position: relative; top: -3px;'>" + nearestMouseDate + "</span></p>" ).style("visibility", "visible")
                 .style("left", ($("#timeline").offset().left + dateToXScale(new Date(nearestMouseDate)) + 10) +"px")
@@ -401,27 +402,27 @@ function chart(config) {
             d3.select(this)
                 .classed("hover", false)
                 .attr("stroke-width", "0px"), tooltip.html( "<p>" + d.key + "<br>" + streamValue + "</p>" ).style("visibility", "hidden");
+            verticalHover.attr("opacity", "0");
         })
 
 
-    var dragRect1 = d3.select(".chart svg").append("rect")
+    var dragWhiteRect1 = d3.select(".chart svg").append("rect")
           .attr("x", 0)
           .attr("y", margin.top)
           .attr("width", 0)
           .attr("height", 300)
           .attr("opacity", 0.3)
           .attr("fill", "white")
-          .attr("class", "drag-rect")
+          .attr("class", "drag-white-rect")
 
-    var dragRect2 = d3.select(".chart svg").append("rect")
+    var dragWhiteRect2 = d3.select(".chart svg").append("rect")
           .attr("x", width)
           .attr("y", margin.top)
           .attr("width", 0)
           .attr("height", 300)
           .attr("opacity", 0.3)
           .attr("fill", "white")
-          .attr("class", "drag-rect")
-
+          .attr("class", "drag-white-rect")
 
     var drag1 = d3.behavior.drag()
            .on('dragstart', null)
@@ -431,14 +432,18 @@ function chart(config) {
                 var x2New = parseFloat(d3.select(this).attr('x2'))+ dx;
                 if(x1New + 0.1*width < parseFloat(verticalDateEnd.attr('x1')) && x1New > 2){
                     verticalDateStart.attr("x1", x1New).attr("x2", x2New)
-                    dragRect1.attr("width", x1New - 2)
+                    dragWhiteRect1.attr("width", x1New - 2)
                         .attr("opacity", 0.3)
                 }
              }).on('dragend', function(d){
                 var mouseDate = x.invert(parseFloat(d3.select(this).attr('x1'))).toISOString().split('T')[0];
                 trimStartDate = mouseDate;
                 mapUpdate(config, true)
-                dragRect1.attr("opacity", 0.6)
+                dragWhiteRect1.attr("opacity", 0.6)
+                if (parseFloat(verticalDateEnd.attr("x1")) - parseFloat(verticalDateStart.attr("x1")) < 0.9*width) {
+                    var newArrowX = (parseFloat(verticalDateStart.attr("x1")) + parseFloat(verticalDateEnd.attr("x1")))/2
+                    dragArrow.attr("visibility", "visibile").attr("x1", newArrowX-20).attr("x2", newArrowX+20)
+                }
              }); 
                
     var drag2 = d3.behavior.drag()
@@ -449,7 +454,7 @@ function chart(config) {
             var x2New = parseFloat(d3.select(this).attr('x2'))+ dx;
             if(x1New > parseFloat(verticalDateStart.attr('x1')) + 0.1*width && x1New < width - 2){
                 verticalDateEnd.attr("x1", x1New).attr("x2", x2New)
-                dragRect2.attr("width", width - x2New)
+                dragWhiteRect2.attr("width", width - x2New)
                         .attr("x", x2New + 2)
                         .attr("opacity", 0.3)
             }
@@ -457,8 +462,37 @@ function chart(config) {
             var mouseDate = x.invert(parseFloat(d3.select(this).attr('x1'))).toISOString().split('T')[0];
             trimEndDate = mouseDate;
             mapUpdate(config, true);
-            dragRect2.attr("opacity", 0.6)
-         }); 
+            dragWhiteRect2.attr("opacity", 0.6)
+            if (parseFloat(verticalDateEnd.attr("x1")) - parseFloat(verticalDateStart.attr("x1")) < 0.9*width) {
+                var newArrowX = (parseFloat(verticalDateStart.attr("x1")) + parseFloat(verticalDateEnd.attr("x1")))/2
+                dragArrow.attr("visibility", "visibile").attr("x1", newArrowX-20).attr("x2", newArrowX+20)
+            }
+         });
+
+    var drag3 = d3.behavior.drag()
+        .on('dragstart', null)
+        .on('drag', function(d){
+            var dx = d3.event.dx;
+            var dragStartNew = parseFloat(verticalDateStart.attr('x1')) + dx
+            var dragRectEndNew = parseFloat(verticalDateEnd.attr('x1')) + dx
+            var dragArrowNew = parseFloat(dragArrow.attr('x1')) + dx
+            if (dragStartNew > 2 && dragRectEndNew < width-2) {
+                dragArrow.attr('x1', dragArrowNew).attr("x2", dragArrowNew + 50)
+                verticalDateStart.attr("x1", dragStartNew).attr("x2", dragStartNew);
+                verticalDateEnd.attr("x1", dragRectEndNew).attr("x2", dragRectEndNew);
+                dragWhiteRect1.attr("width", dragStartNew - 2)
+                        .attr("opacity", 0.3)
+                dragWhiteRect2.attr("width", width - dragRectEndNew)
+                        .attr("x", dragRectEndNew + 2)
+                        .attr("opacity", 0.3)
+            }
+        }).on('dragend', function(d) {
+            dragWhiteRect1.attr("opacity", 0.6)
+            dragWhiteRect2.attr("opacity", 0.6)
+            trimStartDate = x.invert(parseFloat(verticalDateStart.attr('x1'))).toISOString().split('T')[0];
+            trimEndDate = x.invert(parseFloat(verticalDateEnd.attr('x1'))).toISOString().split('T')[0];
+            mapUpdate(config, true);
+        }); 
            
 
     var verticalDateStart = svg.append("line")
@@ -482,6 +516,59 @@ function chart(config) {
             .style("stroke", "black")
             .style("fill", "none")
             .call(drag2);
+
+    d3.select(".chart svg").append("marker")
+        .attr({
+            "id":"arrow-head",
+            "viewBox":"0 0 10 10",
+            "refX":-0.35,
+            "refY":5,
+            "markerWidth":3,
+            "markerHeight":3,
+            "orient":"auto"
+        })
+        .append("path")
+        .attr("d", "M 0 3 L 3 5 L 0 7 z")
+        .attr("class","arrow");
+
+    d3.select(".chart svg").append("marker")
+        .attr({
+            "id":"arrow-head-2",
+            "viewBox":"0 0 10 10",
+            "refX":8.35,
+            "refY":5,
+            "markerWidth":3,
+            "markerHeight":3,
+            "orient": "auto"
+        })
+        .append("path")
+        .attr("d", "M 5 5 L 8 3 L 8 7 z")
+        .attr("class","arrow");
+
+    var dragArrow = d3.select(".chart svg").append("line")
+          .attr("x1", 100)
+          .attr("y1", 300)
+          .attr("x2", 140)
+          .attr("y2", 300)
+          .attr("opacity", 1)
+          .style("stroke-width", 15)
+          .style("stroke", "black")
+          .attr("fill", "red")
+          .attr("class", "drag-arrow")
+          .call(drag3)
+          .attr("marker-end", "url(#arrow-head)")
+          .attr("marker-start", "url(#arrow-head-2)")
+          .attr("visibility", "hidden")
+          .on("click", null)
+          .on("dblclick",function(){
+                mapUpdate(config)
+                dragWhiteRect1.attr("width", 0)
+                dragWhiteRect2.attr("width", 0).attr("x", width) 
+                verticalDateStart.attr("x1", 2).attr("x2", 2)
+                verticalDateEnd.attr("x1", width-2).attr("x2", width-2)
+                dragArrow.attr("visibility", "hidden")
+          });
+
 
     d3.select("#zoom-in").on("click", function() { zoomInHandler(config); });
     d3.select("#zoom-out").on("click", function() { zoomOutHandler(config); });
@@ -552,10 +639,7 @@ function lassoTimelineHighlight(items){
             .style("stroke-width", 2)
             .style("stroke", colorrange[entityKeys.indexOf(item.key)])
             .style("fill", "none");
-
     })
-
-
 }
 
 function giveNearestDate(mouseDate, datesArr){

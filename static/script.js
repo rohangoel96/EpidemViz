@@ -11,7 +11,9 @@ $(document).ready(function() {
     lasso.on('pathchange', lassoHandler);
 });
 var markers = new L.FeatureGroup();
+var heatMap = new L.FeatureGroup();
 var markersArray = []
+var heatMapMarkers = []
 var fillInMissingDates = false;  //fill in missing dates in the data
 var margin = {top: 0, right: 0, bottom: 20, left: 0};
 var format = d3.time.format("%Y-%m-%d");
@@ -21,6 +23,7 @@ var timeEndDate = -1;
 var width;
 var trimStartDate = -1
 var trimEndDate = -1
+var heatMapEnableBool = false;
 
 function plotter() {
     var dsv = d3.dsv(";", "text/plain");
@@ -52,7 +55,7 @@ function plotter() {
                 dates : processedOut[3]
             }
 
-            mapUpdate(config);
+            geoMapHandler(config);
             chart(config);
 
             //update colors for entities
@@ -63,39 +66,91 @@ function plotter() {
     });
 }
 
-function mapUpdate(config, trimmingBool=false) {
+function geoMapHandler(config, trimmingBool=false) {
     var data = config.data;
     var entityKeys = config.entityKeys;
     var colorrange = config.colorrange;
 
     markers.clearLayers();
+    heatMap.clearLayers();
     markersArray = []
+    heatMapMarkers = []
 
     L.tileLayer('http://{s}.tile.osm.org/{z}/{x}/{y}.png', {
     attribution: '&copy; <a href="http://osm.org/copyright">OpenStreetMap</a> contributors'
     }).addTo(map);
 
-    data.forEach(function(item){
-        var startDate;
-        var endDate;
-        if(trimmingBool){
-            startDate = new Date(trimStartDate)
-            endDate = new Date(trimEndDate)
-            if (trimStartDate == -1) startDate = new Date(timeStartDate)
-            if (trimEndDate == -1) endDate = new Date(timeEndDate)
+    if (heatMapEnableBool) {
+        var dataLocationDict = {};
+        var heatmapLocationData = [];
+        var maxDataLocationCount = -1;
 
-        } else {
-            startDate = new Date(timeStartDate)
-            endDate = new Date(timeEndDate)
+        data.forEach(function(item){
+            var startDate;
+            var endDate;
+            if(trimmingBool){
+                startDate = new Date(trimStartDate)
+                endDate = new Date(trimEndDate)
+                if (trimStartDate == -1) startDate = new Date(timeStartDate)
+                if (trimEndDate == -1) endDate = new Date(timeEndDate)
+
+            } else {
+                startDate = new Date(timeStartDate)
+                endDate = new Date(timeEndDate)
+            }
+            if (item.date >= startDate && item.date <= endDate && item.location.length > 0) {
+                item.location.forEach(function(location) {
+                    heatMapMarkers.push({
+                        marker: L.circle(location, {}),
+                        date: item.date
+                    })
+                    var dataLocString = coordinateTupleToString(location)
+                    if (dataLocString in dataLocationDict) {
+                        dataLocationDict[dataLocString] += 1
+                        maxDataLocationCount = Math.max(maxDataLocationCount, dataLocationDict[dataLocString])
+                    } else {
+                        dataLocationDict[dataLocString] = 1
+                    }
+                })
+            }
+        })
+
+        for (dataLocString in dataLocationDict){
+            var dataLocationTuple = stringToCoordinateTuple(dataLocString)
+            heatmapLocationData.push([dataLocationTuple[0], dataLocationTuple[1], dataLocationDict[dataLocString]/maxDataLocationCount])
         }
+        // https://github.com/Leaflet/Leaflet.heat
+        var heat = L.heatLayer(heatmapLocationData, {
+            radius: 10,
+            minOpacity: 0.35,
+            maxZoom: 5,
+            blur: 7,
+            max: 1,
+            gradient: {0.1: "yellow", 0.3: 'red', 0.6: 'lime', 0.9: 'blue'},
+        })
+        heatMap.addLayer(heat)
+        map.addLayer(heatMap)
+    } else {
+        data.forEach(function(item){
+            var startDate;
+            var endDate;
+            if(trimmingBool){
+                startDate = new Date(trimStartDate)
+                endDate = new Date(trimEndDate)
+                if (trimStartDate == -1) startDate = new Date(timeStartDate)
+                if (trimEndDate == -1) endDate = new Date(timeEndDate)
 
-        if (item.date >= startDate && item.date <= endDate) {
-            if (item.location.length > 0) {
+            } else {
+                startDate = new Date(timeStartDate)
+                endDate = new Date(timeEndDate)
+            }
+
+            if (item.date >= startDate && item.date <= endDate && item.location.length > 0) {
                 item.location.forEach(function(location) {
                     var circle = L.circle(location, {
                         color: colorrange[entityKeys.indexOf(item.key)],
                         fill: colorrange[entityKeys.indexOf(item.key)],
-                        radius: 5000
+                        radius: giveRadiusForMarkersZoom()
                     }).bindPopup("Date: "+item.date.toISOString().split('T')[0]+"<br>Entity: "+item.key+"<br>Confidence: "+item.confidence);
                     markers.addLayer(circle);
                     markersArray.push({
@@ -105,9 +160,9 @@ function mapUpdate(config, trimmingBool=false) {
                     })
                 })
             }
-        }
-    })
-    map.addLayer(markers);
+        })
+        map.addLayer(markers);
+    }
 }
 
 function processData(data, dataType) {
@@ -232,9 +287,18 @@ function processData(data, dataType) {
             dataList.push(tuple)
         }
     } 
-
     return [dataList, keys, dataDateDict, dates]
 }
+
+function coordinateTupleToString(coordiante){
+    return ""+coordiante[0]+"_"+coordiante[1]
+}
+
+function stringToCoordinateTuple(str){
+    var tup = str.split("_")
+    return [parseFloat(tup[0]), parseFloat(tup[1])]
+}
+
 
 //helper function to append entities into the left-pane
 function appendEntities(containerID, objList, idText) {
@@ -270,7 +334,7 @@ function chart(config) {
     var dataDateDict = config.dataDateDict;
     var datearray = [];
 
-    strokecolor = colorrange[0];
+    strokecolor = "#aaa";
 
     var tooltip = d3.select("body")
             .append("div")
@@ -439,7 +503,7 @@ function chart(config) {
              }).on('dragend', function(d){
                 var mouseDate = x.invert(parseFloat(d3.select(this).attr('x1'))).toISOString().split('T')[0];
                 trimStartDate = mouseDate;
-                mapUpdate(config, true)
+                geoMapHandler(config, true)
                 dragWhiteRect1.attr("opacity", 0.6)
                 if (parseFloat(verticalDateEnd.attr("x1")) - parseFloat(verticalDateStart.attr("x1")) < 0.9*width) {
                     var newArrowX = (parseFloat(verticalDateStart.attr("x1")) + parseFloat(verticalDateEnd.attr("x1")))/2
@@ -463,7 +527,7 @@ function chart(config) {
          }).on('dragend', function(d) {
             var mouseDate = x.invert(parseFloat(d3.select(this).attr('x1'))).toISOString().split('T')[0];
             trimEndDate = mouseDate;
-            mapUpdate(config, true);
+            geoMapHandler(config, true);
             dragWhiteRect2.attr("opacity", 0.6)
             if (parseFloat(verticalDateEnd.attr("x1")) - parseFloat(verticalDateStart.attr("x1")) < 0.9*width) {
                 var newArrowX = (parseFloat(verticalDateStart.attr("x1")) + parseFloat(verticalDateEnd.attr("x1")))/2
@@ -479,7 +543,7 @@ function chart(config) {
             var dragRectEndNew = parseFloat(verticalDateEnd.attr('x1')) + dx
             var dragArrowNew = parseFloat(dragArrow.attr('x1')) + dx
             if (dragStartNew > 2 && dragRectEndNew < width-2) {
-                dragArrow.attr('x1', dragArrowNew).attr("x2", dragArrowNew + 50)
+                dragArrow.attr('x1', dragArrowNew).attr("x2", dragArrowNew + 40)
                 verticalDateStart.attr("x1", dragStartNew).attr("x2", dragStartNew);
                 verticalDateEnd.attr("x1", dragRectEndNew).attr("x2", dragRectEndNew);
                 dragWhiteRect1.attr("width", dragStartNew - 2)
@@ -493,7 +557,7 @@ function chart(config) {
             dragWhiteRect2.attr("opacity", 0.6)
             trimStartDate = x.invert(parseFloat(verticalDateStart.attr('x1'))).toISOString().split('T')[0];
             trimEndDate = x.invert(parseFloat(verticalDateEnd.attr('x1'))).toISOString().split('T')[0];
-            mapUpdate(config, true);
+            geoMapHandler(config, true);
         }); 
            
 
@@ -527,7 +591,8 @@ function chart(config) {
             "refY":5,
             "markerWidth":3,
             "markerHeight":3,
-            "orient":"auto"
+            "orient":"auto",
+            "fill":"#aaa",
         })
         .append("path")
         .attr("d", "M 0 3 L 3 5 L 0 7 z")
@@ -541,7 +606,8 @@ function chart(config) {
             "refY":5,
             "markerWidth":3,
             "markerHeight":3,
-            "orient": "auto"
+            "orient": "auto",
+            "fill": "#aaa"
         })
         .append("path")
         .attr("d", "M 5 5 L 8 3 L 8 7 z")
@@ -553,9 +619,9 @@ function chart(config) {
           .attr("x2", 0)
           .attr("y2", config.height - 30)
           .attr("opacity", 1)
-          .style("stroke-width", 15)
-          .style("stroke", "black")
-          .attr("fill", "red")
+          .style("stroke-width", 7)
+          .style("stroke", "#aaa")
+          .attr("fill", "#aaa")
           .attr("class", "drag-arrow")
           .call(drag3)
           .attr("marker-end", "url(#arrow-head)")
@@ -563,7 +629,7 @@ function chart(config) {
           .attr("visibility", "hidden")
           .on("click", null)
           .on("dblclick",function(){
-                mapUpdate(config)
+                geoMapHandler(config)
                 dragWhiteRect1.attr("width", 0)
                 dragWhiteRect2.attr("width", 0).attr("x", width) 
                 verticalDateStart.attr("x1", 2).attr("x2", 2)
@@ -584,7 +650,7 @@ function zoomInHandler(config){
         config.width *= 1.2;
     }
     chart(config);
-    mapUpdate(config);
+    geoMapHandler(config);
 }
 
 function zoomOutHandler(config){
@@ -594,7 +660,7 @@ function zoomOutHandler(config){
         config.width /= 1.2;
     }
     chart(config);
-    mapUpdate(config);
+    geoMapHandler(config);
 }
 
 function colorSchemeHandler(config){
@@ -604,13 +670,23 @@ function colorSchemeHandler(config){
 
 function lassoHandler(){
     var path = lasso.getPath();
+    console.log(heatMapEnableBool)
+
     // or check if a point is inside the selected path
     var items = []
-    markersArray.forEach(function(item) {
-    if (lasso.contains(item.marker.getLatLng())) {
-        items.push(item)
-        }
-    })
+    if(heatMapEnableBool){
+        heatMapMarkers.forEach(function(item) {
+            if (lasso.contains(item.marker.getLatLng())) {
+                items.push(item)
+            }
+        })
+    } else {
+        markersArray.forEach(function(item) {
+            if (lasso.contains(item.marker.getLatLng())) {
+                items.push(item)
+            }
+        })
+    }
     lassoTimelineHighlight(items)
 }
 
@@ -632,19 +708,21 @@ function lassoTimelineHighlight(items){
             .range([0, width]);
 
     items.forEach(function(item){
+        console.log(item.key)
         svg.append("line")
             .attr("class", "date-lasso-line")
             .attr("x1", margin.left + x(new Date(item.date)))
             .attr("y1", margin.top + 20)
             .attr("x2", margin.left + x(new Date(item.date)))
             .attr("y2", 228)
-            .style("stroke-width", 2)
-            .style("stroke", colorrange[entityKeys.indexOf(item.key)])
+            .style("stroke-width", 1)
+            .style("stroke-dasharray", ("8, 8"))
+            .style("stroke",item.key ? colorrange[entityKeys.indexOf(item.key)]: "#aaa")
             .style("fill", "none");
     })
 }
 
-function lassoResetHandler(item) {
+function lassoResetHandler() {
     lasso.reset();
     d3.select('.chart svg').selectAll('.date-lasso-line').remove();
     map.setView([45, 0], 1)
@@ -662,6 +740,25 @@ function giveNearestDate(mouseDate, datesArr){
 }
 
 function mapZoomHandler() {
+    markersArray.forEach(function(item) {
+        item.marker.setRadius(giveRadiusForMarkersZoom())
+        markers.addLayer(item.marker)
+    })
+}
+
+function heatMapHandler(item) {
+    heatMapEnableBool = !heatMapEnableBool;    
+    plotter();
+    lasso.reset();
+    d3.select('.chart svg').selectAll('.date-lasso-line').remove();
+    if(heatMapEnableBool){
+        d3.select(item).html("See Points")
+    } else {
+        d3.select(item).html("See HeatMap")
+    }
+}
+
+function giveRadiusForMarkersZoom(){
     var currentZoom = map.getZoom();
     var radiusMultiplier;
 
@@ -674,9 +771,6 @@ function mapZoomHandler() {
     } else { 
         radiusMultiplier = 8;
     }
-    
-    markersArray.forEach(function(item) {
-        item.marker.setRadius(5000 * radiusMultiplier)
-        markers.addLayer(item.marker)
-    })
+
+    return 5000 * radiusMultiplier;
 }

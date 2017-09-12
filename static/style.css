@@ -86,3 +86,9 @@
 .drag-arrow{
 	cursor: pointer;
 }
+
+#heatmap-container{
+	position: absolute;
+	right: 20px;
+	top: 0px;
+}

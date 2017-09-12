@@ -101,17 +101,17 @@
                     </div>
                 </div>
                 <div class="col-md-9" id="right-pane">
-                    <legend>Geographical Map</legend>
+                    <!-- <legend>Geographical Map</legend> -->
                             <span id="lasso-container">
                                 <span id="lasso-head">Lasso: </span>
                                 <span id="lasso-enable" class="lasso-controller"><a href="#" onclick="lassoEnableHandler(this);return false;">Enable</a></span>
-                                <span id="lasso-reset" class="lasso-controller"><a href="#" onclick="javascript:lasso.reset();d3.select('.chart svg').selectAll('.date-lasso-line').remove();return false;">Reset</a></span>
+                                <span id="lasso-reset" class="lasso-controller"><a href="#" onclick="lassoResetHandler(this)">Reset</a></span>
                             </span>
                     <div id="map">
                     
                     </div>
                     <fieldset>
-                            <legend>Timeline</legend>
+                            <!-- <legend>Timeline</legend> -->
 <!--                             <span>
                                 Color Scheme: 
                                 <select id="color-scheme" class="form-control">

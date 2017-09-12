@@ -42,6 +42,8 @@
 
 #timeline{
 	overflow-x: scroll;
+	position: relative;
+	top: -20px;
 }
 
 .zoom-controller{
@@ -55,13 +57,13 @@
 }
 
 #zoom-head{
-	width: 50;
+	width: 50px;
 }
 
 #zoom-container{
 	position: absolute;
-    top: 410px;
-    right: 10px;
+    top: 380px;
+    right: 25px;
 }
 
 #color-scheme{

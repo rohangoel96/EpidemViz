@@ -13,7 +13,7 @@ $(document).ready(function() {
 var markers = new L.FeatureGroup();
 var markersArray = []
 var fillInMissingDates = false;  //fill in missing dates in the data
-var margin = {top: 20, right: 0, bottom: 30, left: 0};
+var margin = {top: 0, right: 0, bottom: 20, left: 0};
 var format = d3.time.format("%Y-%m-%d");
 var chartBoxWidth = 0;
 var timeStartDate = -1;
@@ -47,7 +47,7 @@ function plotter() {
                 margin: margin,
                 width: chartBoxWidth,
                 entityKeys: entityKeys,
-                height: 350 - margin.top - margin.bottom,
+                height: 250 - margin.top - margin.bottom,
                 dataDateDict: processedOut[2],
                 dates : processedOut[3]
             }
@@ -351,9 +351,9 @@ function chart(config) {
     var verticalHover = svg.append("line")
         .attr("class", "verticalHover")
         .attr("x1", 0)
-        .attr("y1", 0)
+        .attr("y1", 20)
         .attr("x2", 0)
-        .attr("y2", 300)
+        .attr("y2", config.height)
         .style("stroke-width", 3)
         .style("stroke-dasharray", ("5, 8"))
         .style("stroke", "#aaa")
@@ -392,7 +392,7 @@ function chart(config) {
 
             tooltip.html( "<p>" + d.key + ": <b>" + streamValue + "</b><br><span style='font-size: 12px; position: relative; top: -3px;'>" + nearestMouseDate + "</span></p>" ).style("visibility", "visible")
                 .style("left", ($("#timeline").offset().left + dateToXScale(new Date(nearestMouseDate)) + 10) +"px")
-                .style("top", ($("#timeline").offset().top + mousey - 100) +"px");
+                .style("top", ($("#timeline").offset().top + mousey - 70) +"px");
         })
         .on("mouseout", function(d, i) {
             svg.selectAll(".layer")
@@ -410,7 +410,7 @@ function chart(config) {
           .attr("x", 0)
           .attr("y", margin.top)
           .attr("width", 0)
-          .attr("height", 300)
+          .attr("height", config.height)
           .attr("opacity", 0.3)
           .attr("fill", "white")
           .attr("class", "drag-white-rect")
@@ -419,7 +419,7 @@ function chart(config) {
           .attr("x", width)
           .attr("y", margin.top)
           .attr("width", 0)
-          .attr("height", 300)
+          .attr("height", config.height)
           .attr("opacity", 0.3)
           .attr("fill", "white")
           .attr("class", "drag-white-rect")
@@ -435,6 +435,7 @@ function chart(config) {
                     dragWhiteRect1.attr("width", x1New - 2)
                         .attr("opacity", 0.3)
                 }
+                dragArrow.attr("visibility", "hidden")
              }).on('dragend', function(d){
                 var mouseDate = x.invert(parseFloat(d3.select(this).attr('x1'))).toISOString().split('T')[0];
                 trimStartDate = mouseDate;
@@ -458,6 +459,7 @@ function chart(config) {
                         .attr("x", x2New + 2)
                         .attr("opacity", 0.3)
             }
+            dragArrow.attr("visibility", "hidden")
          }).on('dragend', function(d) {
             var mouseDate = x.invert(parseFloat(d3.select(this).attr('x1'))).toISOString().split('T')[0];
             trimEndDate = mouseDate;
@@ -498,9 +500,9 @@ function chart(config) {
     var verticalDateStart = svg.append("line")
             .attr("class", "date-select-line")
             .attr("x1", 2)
-            .attr("y1", 0)
+            .attr("y1", 20)
             .attr("x2", 2)
-            .attr("y2", 300)
+            .attr("y2", config.height)
             .style("stroke-width", 4)
             .style("stroke", "black")
             .style("fill", "none")
@@ -509,9 +511,9 @@ function chart(config) {
     var verticalDateEnd = svg.append("line")
             .attr("class", "date-select-line")
             .attr("x1", width-2)
-            .attr("y1", 0)
+            .attr("y1", 20)
             .attr("x2", width-2)
-            .attr("y2", 300)
+            .attr("y2", config.height)
             .style("stroke-width", 4)
             .style("stroke", "black")
             .style("fill", "none")
@@ -546,10 +548,10 @@ function chart(config) {
         .attr("class","arrow");
 
     var dragArrow = d3.select(".chart svg").append("line")
-          .attr("x1", 100)
-          .attr("y1", 300)
-          .attr("x2", 140)
-          .attr("y2", 300)
+          .attr("x1", 0)
+          .attr("y1", config.height - 30)
+          .attr("x2", 0)
+          .attr("y2", config.height - 30)
           .attr("opacity", 1)
           .style("stroke-width", 15)
           .style("stroke", "black")
@@ -633,13 +635,20 @@ function lassoTimelineHighlight(items){
         svg.append("line")
             .attr("class", "date-lasso-line")
             .attr("x1", margin.left + x(new Date(item.date)))
-            .attr("y1", margin.top)
+            .attr("y1", margin.top + 20)
             .attr("x2", margin.left + x(new Date(item.date)))
-            .attr("y2", margin.top + 300)
+            .attr("y2", 228)
             .style("stroke-width", 2)
             .style("stroke", colorrange[entityKeys.indexOf(item.key)])
             .style("fill", "none");
     })
+}
+
+function lassoResetHandler(item) {
+    lasso.reset();
+    d3.select('.chart svg').selectAll('.date-lasso-line').remove();
+    map.setView([45, 0], 1)
+
 }
 
 function giveNearestDate(mouseDate, datesArr){

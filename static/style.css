@@ -64,6 +64,7 @@
 	position: absolute;
     top: 380px;
     right: 25px;
+    z-index: 2;
 }
 
 #color-scheme{
@@ -91,4 +92,24 @@
 	position: absolute;
 	right: 20px;
 	top: 0px;
+}
+
+.map.mode-create {
+    cursor: crosshair;
+}
+
+.leaflet-edge {
+    background-color: #aaa;
+    box-shadow: 0 0 0 2px white, 0 0 10px rgba(0, 0, 0, .35);
+    border-radius: 50%;
+    cursor: move;
+    outline: none;
+    transition: background-color .25s;
+}
+
+.leaflet-polygon {
+    fill: #aaa;
+    stroke: #aaa;
+    stroke-width: 2;
+    fill-opacity: 0.5;
 }

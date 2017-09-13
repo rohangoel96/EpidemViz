@@ -1,22 +1,7 @@
-$(document).ready(function() {
-    plotter();
-    map = L.map('map').setView([45, 0], 1);
-    map.on('zoomend', mapZoomHandler)
-    lasso = L.lassoSelect({
-        activeTooltip:"Click to start the lasso selection",
-        startedTooltip:"Select more points",
-        readyTooltip:"Complete a loop of the lasso selection",
-        finishedTooltip: "Completed Lasso Selection"
-    }).addTo(map);
-    lasso.on('pathchange', lassoHandler);
-});
-var markers = new L.FeatureGroup();
-var heatMap = new L.FeatureGroup();
-var markersArray = []
-var heatMapMarkers = []
 var fillInMissingDates = false;  //fill in missing dates in the data
 var margin = {top: 0, right: 0, bottom: 20, left: 0};
 var format = d3.time.format("%Y-%m-%d");
+
 var chartBoxWidth = 0;
 var timeStartDate = -1;
 var timeEndDate = -1;
@@ -24,6 +9,34 @@ var width;
 var trimStartDate = -1
 var trimEndDate = -1
 var heatMapEnableBool = false;
+var markers = new L.FeatureGroup();
+var heatMap = new L.FeatureGroup();
+var markersArray = []
+var heatMapMarkers = []
+var lasso = new FreeDraw({
+    recreateAfterEdit: true,
+    strokeWidth: 1
+}); //https://github.com/Wildhoney/Leaflet.FreeDraw
+
+$(document).ready(function() {
+    plotter();
+    map = L.map('map').setView([20, 10], 2);
+    map.on('zoomend', mapZoomHandler)
+
+    map.addLayer(lasso);
+    lasso.mode(FreeDraw.NONE)
+    lasso.on('markers', event => {
+        var lassoPolygonList = []
+        var lassoPointList = event.latLngs[0]
+        if(lassoPointList) {
+            lassoPointList.forEach(function(latLng) {
+                lassoPolygonList.push([latLng.lat, latLng.lng])
+            })
+            var lassoPolygon = L.polygon(lassoPolygonList);
+            lassoHandler(lassoPolygon)
+        }
+    });
+});
 
 function plotter() {
     var dsv = d3.dsv(";", "text/plain");
@@ -56,6 +69,7 @@ function plotter() {
             }
 
             geoMapHandler(config);
+            lasso.clear()
             chart(config);
 
             //update colors for entities
@@ -77,7 +91,10 @@ function geoMapHandler(config, trimmingBool=false) {
     heatMapMarkers = []
 
     L.tileLayer('http://{s}.tile.osm.org/{z}/{x}/{y}.png', {
-    attribution: '&copy; <a href="http://osm.org/copyright">OpenStreetMap</a> contributors'
+        // attribution: '&copy; <a href="http://osm.org/copyright">OpenStreetMap</a> contributors',
+        noWrap: true,
+        maxZoom: 8,
+        minZoom: 1,
     }).addTo(map);
 
     if (heatMapEnableBool) {
@@ -668,21 +685,18 @@ function colorSchemeHandler(config){
     chart(config);
 }
 
-function lassoHandler(){
-    var path = lasso.getPath();
-    console.log(heatMapEnableBool)
-
+function lassoHandler(lassoPolygon){
     // or check if a point is inside the selected path
     var items = []
     if(heatMapEnableBool){
         heatMapMarkers.forEach(function(item) {
-            if (lasso.contains(item.marker.getLatLng())) {
+            if (lassoPolygon.getBounds().contains(item.marker._latlng)) {
                 items.push(item)
             }
         })
     } else {
         markersArray.forEach(function(item) {
-            if (lasso.contains(item.marker.getLatLng())) {
+            if (lassoPolygon.getBounds().contains(item.marker._latlng)) {
                 items.push(item)
             }
         })
@@ -692,23 +706,24 @@ function lassoHandler(){
 
 function lassoEnableHandler(item){
     if ($("#lasso-enable a")[0].text == "Enable") {
-        lasso.enable();
+        lasso.mode(FreeDraw.CREATE | FreeDraw.EDIT);
         $("#lasso-enable a")[0].text = "Disable"
     } else {
-        lasso.disable();
+        lasso.mode(FreeDraw.NONE);
+        lasso.clear();
         d3.select(".chart svg").selectAll(".date-lasso-line").remove()
         $("#lasso-enable a")[0].text = "Enable"
     }
 }
 
 function lassoTimelineHighlight(items){
+    d3.select('.chart svg').selectAll('.date-lasso-line').remove();
     var svg = d3.select(".chart svg");
     var x = d3.time.scale()
             .domain([new Date(timeStartDate), new Date(timeEndDate)])
             .range([0, width]);
 
     items.forEach(function(item){
-        console.log(item.key)
         svg.append("line")
             .attr("class", "date-lasso-line")
             .attr("x1", margin.left + x(new Date(item.date)))
@@ -723,10 +738,9 @@ function lassoTimelineHighlight(items){
 }
 
 function lassoResetHandler() {
-    lasso.reset();
+    lasso.clear();
     d3.select('.chart svg').selectAll('.date-lasso-line').remove();
-    map.setView([45, 0], 1)
-
+    map.setView([20, 10], 2)
 }
 
 function giveNearestDate(mouseDate, datesArr){
@@ -749,7 +763,7 @@ function mapZoomHandler() {
 function heatMapHandler(item) {
     heatMapEnableBool = !heatMapEnableBool;    
     plotter();
-    lasso.reset();
+    lasso.clear();
     d3.select('.chart svg').selectAll('.date-lasso-line').remove();
     if(heatMapEnableBool){
         d3.select(item).html("See Points")
@@ -771,6 +785,5 @@ function giveRadiusForMarkersZoom(){
     } else { 
         radiusMultiplier = 8;
     }
-
     return 5000 * radiusMultiplier;
 }

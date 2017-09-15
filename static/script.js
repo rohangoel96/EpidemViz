@@ -1,7 +1,11 @@
 var fillInMissingDates = false;  //fill in missing dates in the data
 var margin = {top: 0, right: 0, bottom: 20, left: 0};
-var format = d3.time.format("%Y-%m-%d");
+var timeParseFormat = d3.time.format("%Y-%m-%d");
+var timeDisplayFormat = d3.time.format("%d/%m/%y")
+var divID1 = "#timeline-1"
+var divID2 = "#timeline-2"
 
+var mapDataSelector = "OFFICIAL"
 var chartBoxWidth = 0;
 var timeStartDate = -1;
 var timeEndDate = -1;
@@ -15,7 +19,9 @@ var markersArray = []
 var heatMapMarkers = []
 var lasso = new FreeDraw({
     recreateAfterEdit: true,
-    strokeWidth: 1
+    strokeWidth: 1,
+    maximumPolygons : 1,
+    leaveModeAfterCreate: true
 }); //https://github.com/Wildhoney/Leaflet.FreeDraw
 
 $(document).ready(function() {
@@ -26,64 +32,127 @@ $(document).ready(function() {
     map.addLayer(lasso);
     lasso.mode(FreeDraw.NONE)
     lasso.on('markers', event => {
-        var lassoPolygonList = []
-        var lassoPointList = event.latLngs[0]
-        if(lassoPointList) {
-            lassoPointList.forEach(function(latLng) {
-                lassoPolygonList.push([latLng.lat, latLng.lng])
+        var lassoPointListofList = event.latLngs
+        if(lassoPointListofList) {
+            var lassoPolygonList = []
+            lassoPointListofList.forEach(function(polygonList) {
+                polygonList.forEach(function(latLng) {
+                    lassoPolygonList.push([latLng.lat, latLng.lng])
+                })
+                var lassoPolygon = L.polygon(lassoPolygonList);
+                // lassoPolygon.addTo(map)
+                lassoHandler(lassoPolygon)
             })
-            var lassoPolygon = L.polygon(lassoPolygonList);
-            lassoHandler(lassoPolygon)
         }
     });
+
+    $(divID1).on('scroll', function () {$(divID2).scrollLeft($(this).scrollLeft());});
+    $(divID2).on('scroll', function () {$(divID1).scrollLeft($(this).scrollLeft());});
+
 });
 
 function plotter() {
     var dsv = d3.dsv(";", "text/plain");
-    dsv("/static/data/"+$("input:radio[name=data-file]:checked").val()
-        +".csv", function(error, data) {
+
+    dsv("/static/data/official.csv", function(error, officialData) {
+        if (error) throw error;
+        
+        var processedOfficialData = processData(officialData, $("input:radio[name=data-type]:checked").val());
+
+        dsv("/static/data/un_official.csv", function(error, unofficialData) {
             if (error) throw error;
+            var processedUnofficialData = processData(unofficialData, $("input:radio[name=data-type]:checked").val());
             
-            processedOut = processData(data, $("input:radio[name=data-type]:checked").val());
-            
-            var processedDataList = processedOut[0]
-            entityKeys = processedOut[1]
+            var combinedData = officialData.concat(unofficialData)
+            var processedCombinedData = processData(combinedData, $("input:radio[name=data-type]:checked").val());
+
+            entityKeys = processedCombinedData[1]
             colorrange = generateDistinctColors(entityKeys.length)
 
-            processedDataList.forEach(function(d) {
-                d.date = format.parse(d.date);
-                d.value = +d.value;
-                d.key = d.key;
-            });
+            chartBoxWidth = $("#timeline-1").width() - margin.left - margin.right;
 
-            chartBoxWidth = $("#timeline").width() - margin.left - margin.right;
-            var config = {
-                data: processedDataList,
+            var mapConfig = {
+                combinedData: processedCombinedData[0],
+                officialData: processedOfficialData[0],
+                unofficialData: processedUnofficialData[0],
                 colorrange: colorrange,
-                margin: margin,
-                width: chartBoxWidth,
-                entityKeys: entityKeys,
-                height: 250 - margin.top - margin.bottom,
-                dataDateDict: processedOut[2],
-                dates : processedOut[3]
+                entityKeys: entityKeys
             }
 
-            geoMapHandler(config);
-            lasso.clear()
-            chart(config);
+            drawTimeline({
+                divID: divID1,
+                data: processedOfficialData[0],
+                margin: margin,
+                width: chartBoxWidth,
+                height: 250 - margin.top - margin.bottom,
+                dataDateDict: processedOfficialData[2],
+                dates : processedOfficialData[3],
+                colorrange: colorrange,
+                entityKeys: entityKeys,
+                dataDateDictHover: {
+                    official: processedOfficialData[2],
+                    unofficial: processedUnofficialData[2]
+                },
+                mapConfig: mapConfig
+            });
+
+            drawTimeline({
+                divID: divID2,
+                data: processedUnofficialData[0],
+                margin: margin,
+                width: chartBoxWidth,
+                height: 250 - margin.top - margin.bottom,
+                dataDateDict: processedUnofficialData[2],
+                dates : processedUnofficialData[3],
+                colorrange: colorrange,
+                entityKeys: entityKeys,
+                dataDateDictHover: {
+                    official: processedOfficialData[2],
+                    unofficial: processedUnofficialData[2]
+                },
+                mapConfig: mapConfig
+            });
+
+            geoMapHandler(mapConfig, false)
+
+            $(".data-file").change(function() {
+                if($("#map-data-official").is(":checked") && $("#map-data-unofficial").is(":checked")) {
+                    mapDataSelector = "BOTH";
+                } else if ($("#map-data-official").is(":checked")){
+                    mapDataSelector = "OFFICIAL"
+                } else if ($("#map-data-unofficial").is(":checked")){
+                    mapDataSelector = "UNOFFICIAL"
+                } else {
+                    mapDataSelector = "OFFICIAL"
+                    $("#map-data-official").prop("checked", true)
+                }
+                geoMapHandler(mapConfig)
+            });
 
             //update colors for entities
             $(".enties-label").css("color", "black")
             $( "label[id^='label_"+$("input:radio[name=data-type]:checked").val()+"']").each(function(ind, item) {
                 $(this).css("color", colorrange[entityKeys.indexOf($(this).attr("id").split("_")[2])])
             })
+
+        });
+    
     });
+
 }
 
-function geoMapHandler(config, trimmingBool=false) {
-    var data = config.data;
-    var entityKeys = config.entityKeys;
-    var colorrange = config.colorrange;
+function geoMapHandler(mapConfig, trimmingBool=true) {
+    var entityKeys = mapConfig.entityKeys;
+    var colorrange = mapConfig.colorrange;
+    var data;
+
+    if (mapDataSelector == "OFFICIAL") {
+        data = mapConfig.officialData;
+    } else if (mapDataSelector == "UNOFFICIAL"){
+        data = mapConfig.unofficialData;
+    } else {
+        data = mapConfig.combinedData;
+    }
 
     markers.clearLayers();
     heatMap.clearLayers();
@@ -119,7 +188,8 @@ function geoMapHandler(config, trimmingBool=false) {
                 item.location.forEach(function(location) {
                     heatMapMarkers.push({
                         marker: L.circle(location, {}),
-                        date: item.date
+                        date: item.date,
+                        reliability: item.reliability
                     })
                     var dataLocString = coordinateTupleToString(location)
                     if (dataLocString in dataLocationDict) {
@@ -173,13 +243,16 @@ function geoMapHandler(config, trimmingBool=false) {
                     markersArray.push({
                         marker: circle,
                         date: item.date,
-                        key: item.key
+                        key: item.key,
+                        reliability: item.reliability
                     })
                 })
             }
         })
         map.addLayer(markers);
     }
+
+    lassoResetHandler()
 }
 
 function processData(data, dataType) {
@@ -286,6 +359,7 @@ function processData(data, dataType) {
                 dataDateDict[d.publication_date][key]["value"] += 1
                 dataDateDict[d.publication_date][key]["location"].push([d.latitude, d.longitude])
                 dataDateDict[d.publication_date][key]["confidence"] = d.confidence
+                dataDateDict[d.publication_date][key]["reliability"] = d.rss_feed_reliability
             }
         })
     })
@@ -295,11 +369,12 @@ function processData(data, dataType) {
     for (date in dataDateDict) {
         for (key in dataDateDict[date]){
             var tuple = {
-                "date": date,
+                "date": timeParseFormat.parse(date),
                 "key": key,
-                "value": dataDateDict[date][key]["value"],
+                "value": +dataDateDict[date][key]["value"],
                 "location": dataDateDict[date][key]["location"],
-                "confidence": dataDateDict[date][key]["confidence"]
+                "confidence": dataDateDict[date][key]["confidence"],
+                "reliability": dataDateDict[date][key]["reliability"]
             }
             dataList.push(tuple)
         }
@@ -342,23 +417,30 @@ function appendEntities(containerID, objList, idText) {
     }
 }
 
-function chart(config) {
+function drawTimeline(config) {
     var margin = config.margin;
     width = config.width;
     var height = config.height;
     var data = config.data;
     var colorrange = config.colorrange;
-    var dataDateDict = config.dataDateDict;
+    var divID = config.divID;
     var datearray = [];
 
     strokecolor = "#aaa";
 
-    var tooltip = d3.select("body")
-            .append("div")
-            .attr("class", "remove")
-            .attr("id", "tooltip")
-            .style("z-index", "20")
-            .style("visibility", "hidden")
+    var tooltip1 = d3.select("body")
+        .append("div")
+        .attr("class", "remove tooltips")
+        .attr("id", "tooltip1")
+        .style("z-index", "20")
+        .style("visibility", "hidden")
+    
+    var tooltip2 = d3.select("body")
+        .append("div")
+        .attr("class", "remove tooltips")
+        .attr("id", "tooltip2")
+        .style("z-index", "20")
+        .style("visibility", "hidden")
 
     var x = d3.time.scale()
             .domain([new Date(timeStartDate), new Date(timeEndDate)])   
@@ -373,7 +455,7 @@ function chart(config) {
     var xAxis = d3.svg.axis()
             .scale(x)
             .orient("bottom")
-            .tickFormat(d3.time.format("%d/%m/%y"))
+            .tickFormat(timeDisplayFormat)
             .ticks(config.width/25)
 
     var stack = d3.layout.stack()
@@ -391,8 +473,8 @@ function chart(config) {
             .y0(function(d) { return y(d.y0); })
             .y1(function(d) { return y(d.y0 + d.y); });
 
-    d3.select(".chart svg").remove();
-    var svg = d3.select(".chart").append("svg")
+    d3.select(divID+" svg").remove();
+    var svg = d3.select(divID).append("svg")
             .attr("width", width + margin.left + margin.right)
             .attr("height", height + margin.top + margin.bottom)
             .append("g")
@@ -400,7 +482,8 @@ function chart(config) {
 
     var layers = stack(nest.entries(data));
 
-    x.domain(d3.extent(data, function(d) { return d.date; }));
+    // x.domain(d3.extent(data, function(d) { return d.date; }));
+    x.domain([new Date(timeStartDate), new Date(timeEndDate)]);
     y.domain([0, d3.max(data, function(d) { return d.y0 + d.y; })]);
 
     svg.selectAll(".layer")
@@ -428,8 +511,8 @@ function chart(config) {
         }
     });
 
-    var streamValue = 0;
-    var verticalHover = svg.append("line")
+    var streamValue1 = 0, streamValue2 = 0;
+    var verticalHover = d3.select(divID1+" svg").append("line")
         .attr("class", "verticalHover")
         .attr("x1", 0)
         .attr("y1", 20)
@@ -439,11 +522,26 @@ function chart(config) {
         .style("stroke-dasharray", ("5, 8"))
         .style("stroke", "#aaa")
         .style("fill", "none")
+        .attr("opacity", 0)
+        .attr("id", "vertical-hover-1")
+
+    var verticalHover2 = d3.select(divID2+" svg").append("line")
+        .attr("class", "verticalHover")
+        .attr("x1", 0)
+        .attr("y1", 20)
+        .attr("x2", 0)
+        .attr("y2", config.height)
+        .style("stroke-width", 3)
+        .style("stroke-dasharray", ("5, 8"))
+        .style("stroke", "#aaa")
+        .style("fill", "none")
+        .attr("opacity", 0)
+        .attr("id", "vertical-hover-2")
 
     svg.selectAll(".layer")
         .attr("opacity", 1)
         .on("mouseover", function(d, i) {
-            svg.selectAll(".layer").transition()
+            d3.selectAll(".chart").selectAll(".layer").transition()
             .duration(250)
             .attr("opacity", function(d, j) {
                 return j != i ? 0.25 : 1;
@@ -456,7 +554,15 @@ function chart(config) {
             var mouseDate = x.invert(d3.mouse(this)[0]).toISOString().split('T')[0];
             var nearestMouseDate = giveNearestDate(mouseDate, config.dates)
 
-            var streamValue = dataDateDict[nearestMouseDate][d.key].value
+            streamValue1 = 0, streamValue2 = 0;
+            if(config.dataDateDictHover["official"][nearestMouseDate]){
+                streamValue1 = config.dataDateDictHover["official"][nearestMouseDate][d.key].value
+            }
+
+            if(config.dataDateDictHover["unofficial"][nearestMouseDate]){
+                streamValue2 = config.dataDateDictHover["unofficial"][nearestMouseDate][d.key].value
+            }
+            
             var dateToXScale = d3.time.scale()
                 .domain([new Date(timeStartDate), new Date(timeEndDate)])
                 .range([0, width]);
@@ -466,44 +572,48 @@ function chart(config) {
                 .attr("stroke", strokecolor)
                 .attr("stroke-width", "0.5px"); 
 
-            verticalHover
+            d3.selectAll(".verticalHover")
                 .attr("x1", dateToXScale(new Date(nearestMouseDate)))
                 .attr("x2", dateToXScale(new Date(nearestMouseDate)))
                 .attr("opacity", "1");
 
-            tooltip.html( "<p>" + d.key + ": <b>" + streamValue + "</b><br><span style='font-size: 12px; position: relative; top: -3px;'>" + nearestMouseDate + "</span></p>" ).style("visibility", "visible")
-                .style("left", ($("#timeline").offset().left + dateToXScale(new Date(nearestMouseDate)) + 10) +"px")
-                .style("top", ($("#timeline").offset().top + mousey - 70) +"px");
+            tooltip1.html( "<p>" + d.key + ": <b>" + streamValue1 + "</b><br><span style='font-size: 12px; position: relative; top: -3px;'>" + timeDisplayFormat(new Date(nearestMouseDate)) + "</span></p>" ).style("visibility", "visible")
+                .style("left", ($(divID1).offset().left + parseFloat($("#vertical-hover-1")[0].getBBox().x) - $(divID1).scrollLeft() + 10) +"px")
+                .style("top", ($(divID1).offset().top + mousey - 70) +"px");
+
+            tooltip2.html( "<p>" + d.key + ": <b>" + streamValue2 + "</b><br><span style='font-size: 12px; position: relative; top: -3px;'>" + timeDisplayFormat(new Date(nearestMouseDate)) + "</span></p>" ).style("visibility", "visible")
+                .style("left", (($(divID1).offset().left + parseFloat($("#vertical-hover-2")[0].getBBox().x) - $(divID2).scrollLeft() + 10)) +"px")
+                .style("top", ($(divID2).offset().top + mousey - 70) +"px");
         })
         .on("mouseout", function(d, i) {
-            svg.selectAll(".layer")
+            d3.selectAll(".chart").selectAll(".layer")
                 .transition()
                 .duration(250)
                 .attr("opacity", "1");
-            d3.select(this)
-                .classed("hover", false)
-                .attr("stroke-width", "0px"), tooltip.html( "<p>" + d.key + "<br>" + streamValue + "</p>" ).style("visibility", "hidden");
-            verticalHover.attr("opacity", "0");
+
+            tooltip1.html( "<p>" + d.key + "<br>" + streamValue1 + "</p>" ).style("visibility", "hidden");
+            tooltip2.html( "<p>" + d.key + "<br>" + streamValue2 + "</p>" ).style("visibility", "hidden");
+            
+            d3.selectAll(".verticalHover").attr("opacity", "0");
         })
 
-
-    var dragWhiteRect1 = d3.select(".chart svg").append("rect")
+    var dragWhiteRect1 = d3.select(divID+" svg").append("rect")
           .attr("x", 0)
           .attr("y", margin.top)
           .attr("width", 0)
           .attr("height", config.height)
           .attr("opacity", 0.3)
           .attr("fill", "white")
-          .attr("class", "drag-white-rect")
+          .attr("class", "drag-white-rect dragWhiteRectStart")
 
-    var dragWhiteRect2 = d3.select(".chart svg").append("rect")
+    var dragWhiteRect2 = d3.select(divID+" svg").append("rect")
           .attr("x", width)
           .attr("y", margin.top)
           .attr("width", 0)
           .attr("height", config.height)
           .attr("opacity", 0.3)
           .attr("fill", "white")
-          .attr("class", "drag-white-rect")
+          .attr("class", "drag-white-rect dragWhiteRectEnd")
 
     var drag1 = d3.behavior.drag()
            .on('dragstart', null)
@@ -512,19 +622,19 @@ function chart(config) {
                 var x1New = parseFloat(d3.select(this).attr('x1'))+ dx;
                 var x2New = parseFloat(d3.select(this).attr('x2'))+ dx;
                 if(x1New + 0.1*width < parseFloat(verticalDateEnd.attr('x1')) && x1New > 2){
-                    verticalDateStart.attr("x1", x1New).attr("x2", x2New)
-                    dragWhiteRect1.attr("width", x1New - 2)
+                    d3.selectAll(".verticalDateStart").attr("x1", x1New).attr("x2", x2New)
+                    d3.selectAll(".dragWhiteRectStart").attr("width", x1New - 2)
                         .attr("opacity", 0.3)
                 }
                 dragArrow.attr("visibility", "hidden")
              }).on('dragend', function(d){
                 var mouseDate = x.invert(parseFloat(d3.select(this).attr('x1'))).toISOString().split('T')[0];
                 trimStartDate = mouseDate;
-                geoMapHandler(config, true)
+                geoMapHandler(config.mapConfig)
                 dragWhiteRect1.attr("opacity", 0.6)
                 if (parseFloat(verticalDateEnd.attr("x1")) - parseFloat(verticalDateStart.attr("x1")) < 0.9*width) {
                     var newArrowX = (parseFloat(verticalDateStart.attr("x1")) + parseFloat(verticalDateEnd.attr("x1")))/2
-                    dragArrow.attr("visibility", "visibile").attr("x1", newArrowX-20).attr("x2", newArrowX+20)
+                    d3.selectAll(".dragArrow").attr("visibility", "visibile").attr("x1", newArrowX-20).attr("x2", newArrowX+20)
                 }
              }); 
                
@@ -535,8 +645,8 @@ function chart(config) {
             var x1New = parseFloat(d3.select(this).attr('x1'))+ dx;
             var x2New = parseFloat(d3.select(this).attr('x2'))+ dx;
             if(x1New > parseFloat(verticalDateStart.attr('x1')) + 0.1*width && x1New < width - 2){
-                verticalDateEnd.attr("x1", x1New).attr("x2", x2New)
-                dragWhiteRect2.attr("width", width - x2New)
+                d3.selectAll(".verticalDateEnd").attr("x1", x1New).attr("x2", x2New)
+                d3.selectAll(".dragWhiteRectEnd").attr("width", width - x2New)
                         .attr("x", x2New + 2)
                         .attr("opacity", 0.3)
             }
@@ -544,11 +654,11 @@ function chart(config) {
          }).on('dragend', function(d) {
             var mouseDate = x.invert(parseFloat(d3.select(this).attr('x1'))).toISOString().split('T')[0];
             trimEndDate = mouseDate;
-            geoMapHandler(config, true);
+            geoMapHandler(config.mapConfig);
             dragWhiteRect2.attr("opacity", 0.6)
             if (parseFloat(verticalDateEnd.attr("x1")) - parseFloat(verticalDateStart.attr("x1")) < 0.9*width) {
                 var newArrowX = (parseFloat(verticalDateStart.attr("x1")) + parseFloat(verticalDateEnd.attr("x1")))/2
-                dragArrow.attr("visibility", "visibile").attr("x1", newArrowX-20).attr("x2", newArrowX+20)
+                d3.selectAll(".dragArrow").attr("visibility", "visibile").attr("x1", newArrowX-20).attr("x2", newArrowX+20)
             }
          });
 
@@ -560,26 +670,26 @@ function chart(config) {
             var dragRectEndNew = parseFloat(verticalDateEnd.attr('x1')) + dx
             var dragArrowNew = parseFloat(dragArrow.attr('x1')) + dx
             if (dragStartNew > 2 && dragRectEndNew < width-2) {
-                dragArrow.attr('x1', dragArrowNew).attr("x2", dragArrowNew + 40)
-                verticalDateStart.attr("x1", dragStartNew).attr("x2", dragStartNew);
-                verticalDateEnd.attr("x1", dragRectEndNew).attr("x2", dragRectEndNew);
-                dragWhiteRect1.attr("width", dragStartNew - 2)
+                d3.selectAll(".dragArrow").attr('x1', dragArrowNew).attr("x2", dragArrowNew + 40)
+                d3.selectAll(".verticalDateStart").attr("x1", dragStartNew).attr("x2", dragStartNew);
+                d3.selectAll(".verticalDateEnd").attr("x1", dragRectEndNew).attr("x2", dragRectEndNew);
+                d3.selectAll(".dragWhiteRectStart").attr("width", dragStartNew - 2)
                         .attr("opacity", 0.3)
-                dragWhiteRect2.attr("width", width - dragRectEndNew)
+                d3.selectAll(".dragWhiteRectEnd").attr("width", width - dragRectEndNew)
                         .attr("x", dragRectEndNew + 2)
                         .attr("opacity", 0.3)
             }
         }).on('dragend', function(d) {
-            dragWhiteRect1.attr("opacity", 0.6)
-            dragWhiteRect2.attr("opacity", 0.6)
+            d3.selectAll(".dragWhiteRectStart").attr("opacity", 0.6)
+            d3.selectAll(".dragWhiteRectEnd").attr("opacity", 0.6)
             trimStartDate = x.invert(parseFloat(verticalDateStart.attr('x1'))).toISOString().split('T')[0];
             trimEndDate = x.invert(parseFloat(verticalDateEnd.attr('x1'))).toISOString().split('T')[0];
-            geoMapHandler(config, true);
+            geoMapHandler(config.mapConfig);
         }); 
            
 
     var verticalDateStart = svg.append("line")
-            .attr("class", "date-select-line")
+            .attr("class", "date-select-line verticalDateStart")
             .attr("x1", 2)
             .attr("y1", 20)
             .attr("x2", 2)
@@ -590,7 +700,7 @@ function chart(config) {
             .call(drag1);
 
     var verticalDateEnd = svg.append("line")
-            .attr("class", "date-select-line")
+            .attr("class", "date-select-line verticalDateEnd")
             .attr("x1", width-2)
             .attr("y1", 20)
             .attr("x2", width-2)
@@ -600,7 +710,7 @@ function chart(config) {
             .style("fill", "none")
             .call(drag2);
 
-    d3.select(".chart svg").append("marker")
+    d3.select(divID+" svg").append("marker")
         .attr({
             "id":"arrow-head",
             "viewBox":"0 0 10 10",
@@ -615,7 +725,7 @@ function chart(config) {
         .attr("d", "M 0 3 L 3 5 L 0 7 z")
         .attr("class","arrow");
 
-    d3.select(".chart svg").append("marker")
+    d3.select(divID+" svg").append("marker")
         .attr({
             "id":"arrow-head-2",
             "viewBox":"0 0 10 10",
@@ -630,7 +740,7 @@ function chart(config) {
         .attr("d", "M 5 5 L 8 3 L 8 7 z")
         .attr("class","arrow");
 
-    var dragArrow = d3.select(".chart svg").append("line")
+    var dragArrow = d3.select(divID+" svg").append("line")
           .attr("x1", 0)
           .attr("y1", config.height - 30)
           .attr("x2", 0)
@@ -639,24 +749,40 @@ function chart(config) {
           .style("stroke-width", 7)
           .style("stroke", "#aaa")
           .attr("fill", "#aaa")
-          .attr("class", "drag-arrow")
+          .attr("class", "drag-arrow dragArrow")
           .call(drag3)
           .attr("marker-end", "url(#arrow-head)")
           .attr("marker-start", "url(#arrow-head-2)")
           .attr("visibility", "hidden")
           .on("click", null)
           .on("dblclick",function(){
-                geoMapHandler(config)
-                dragWhiteRect1.attr("width", 0)
-                dragWhiteRect2.attr("width", 0).attr("x", width) 
-                verticalDateStart.attr("x1", 2).attr("x2", 2)
-                verticalDateEnd.attr("x1", width-2).attr("x2", width-2)
-                dragArrow.attr("visibility", "hidden")
+                geoMapHandler(config.mapConfig)
+                d3.selectAll(".dragWhiteRectStart").attr("width", 0)
+                d3.selectAll(".dragWhiteRectEnd").attr("width", 0).attr("x", width) 
+                d3.selectAll(".verticalDateStart").attr("x1", 2).attr("x2", 2)
+                d3.selectAll(".verticalDateEnd").attr("x1", width-2).attr("x2", width-2)
+                d3.selectAll(".dragArrow").attr("visibility", "hidden")
           });
 
-
-    d3.select("#zoom-in").on("click", function() { zoomInHandler(config); });
-    d3.select("#zoom-out").on("click", function() { zoomOutHandler(config); });
+    if(divID == "#timeline-1"){
+        $("#zoom-in-1").unbind('click').bind('click', function(e, triggered) { 
+            zoomInHandler(config);
+            if(!triggered){$("#zoom-in-2").trigger('click', true);}
+        });
+        $("#zoom-out-1").unbind('click').bind('click', function(e, triggered) { 
+            zoomOutHandler(config);
+            if(!triggered){$("#zoom-out-2").trigger('click', true);}
+        });
+    } else {
+        $("#zoom-in-2").unbind('click').bind('click', function(e, triggered) { 
+            zoomInHandler(config);
+            if(!triggered){$("#zoom-in-1").trigger('click', true);}
+        });
+        $("#zoom-out-2").unbind('click').bind('click', function(e, triggered) { 
+            zoomOutHandler(config);
+            if(!triggered){$("#zoom-out-1").trigger('click', true);}
+        });
+    }
     d3.select("#color-scheme").on("change", function() { colorSchemeHandler(config); });
 }
 
@@ -666,8 +792,7 @@ function zoomInHandler(config){
     } else {
         config.width *= 1.2;
     }
-    chart(config);
-    geoMapHandler(config);
+    drawTimeline(config);
 }
 
 function zoomOutHandler(config){
@@ -676,13 +801,12 @@ function zoomOutHandler(config){
     } else {
         config.width /= 1.2;
     }
-    chart(config);
-    geoMapHandler(config);
+    drawTimeline(config);
 }
 
 function colorSchemeHandler(config){
     config.color = d3.select("#color-scheme").node().value;
-    chart(config);
+    drawTimeline(config);
 }
 
 function lassoHandler(lassoPolygon){
@@ -704,43 +828,65 @@ function lassoHandler(lassoPolygon){
     lassoTimelineHighlight(items)
 }
 
-function lassoEnableHandler(item){
+function lassoEnableHandler(){
     if ($("#lasso-enable a")[0].text == "Enable") {
-        lasso.mode(FreeDraw.CREATE | FreeDraw.EDIT);
+        lasso.mode(FreeDraw.CREATE + FreeDraw.EDIT);
         $("#lasso-enable a")[0].text = "Disable"
     } else {
         lasso.mode(FreeDraw.NONE);
         lasso.clear();
-        d3.select(".chart svg").selectAll(".date-lasso-line").remove()
+        d3.selectAll(".chart svg").selectAll(".date-lasso-line").remove()
         $("#lasso-enable a")[0].text = "Enable"
     }
 }
 
+function lassoResetHandler() {
+    lasso.clear();
+    d3.selectAll(".chart svg").selectAll(".date-lasso-line").remove()
+    map.setView([20, 10], 2)
+
+    if ($("#lasso-enable a")[0].text == "Disable") {
+        lasso.mode(FreeDraw.CREATE + FreeDraw.EDIT);
+    } else {
+        lasso.mode(FreeDraw.NONE);
+    }
+}
+
 function lassoTimelineHighlight(items){
-    d3.select('.chart svg').selectAll('.date-lasso-line').remove();
-    var svg = d3.select(".chart svg");
+    d3.selectAll(".chart svg").selectAll(".date-lasso-line").remove()
+    var svg1 = d3.select(divID1+" svg");
+    var svg2 = d3.select(divID2+" svg");
     var x = d3.time.scale()
             .domain([new Date(timeStartDate), new Date(timeEndDate)])
             .range([0, width]);
 
     items.forEach(function(item){
-        svg.append("line")
-            .attr("class", "date-lasso-line")
-            .attr("x1", margin.left + x(new Date(item.date)))
-            .attr("y1", margin.top + 20)
-            .attr("x2", margin.left + x(new Date(item.date)))
-            .attr("y2", 228)
-            .style("stroke-width", 1)
-            .style("stroke-dasharray", ("8, 8"))
-            .style("stroke",item.key ? colorrange[entityKeys.indexOf(item.key)]: "#aaa")
-            .style("fill", "none");
+        if(item.reliability == "official"){
+            svg1.append("line")
+                .attr("class", "date-lasso-line")
+                .attr("x1", margin.left + x(new Date(item.date)))
+                .attr("y1", margin.top + 20)
+                .attr("x2", margin.left + x(new Date(item.date)))
+                .attr("y2", 228)
+                .style("stroke-width", 1)
+                .style("stroke-dasharray", ("8, 8"))
+                .style("stroke",item.key ? colorrange[entityKeys.indexOf(item.key)]: "#aaa")
+                .style("fill", "none");
+        } else if (item.reliability == "unofficial"){
+            svg2.append("line")
+                .attr("class", "date-lasso-line")
+                .attr("x1", margin.left + x(new Date(item.date)))
+                .attr("y1", margin.top + 20)
+                .attr("x2", margin.left + x(new Date(item.date)))
+                .attr("y2", 228)
+                .style("stroke-width", 1)
+                .style("stroke-dasharray", ("8, 8"))
+                .style("stroke",item.key ? colorrange[entityKeys.indexOf(item.key)]: "#aaa")
+                .style("fill", "none");
+        } else {
+            console.log("rss_reliability error")
+        }
     })
-}
-
-function lassoResetHandler() {
-    lasso.clear();
-    d3.select('.chart svg').selectAll('.date-lasso-line').remove();
-    map.setView([20, 10], 2)
 }
 
 function giveNearestDate(mouseDate, datesArr){
@@ -764,7 +910,7 @@ function heatMapHandler(item) {
     heatMapEnableBool = !heatMapEnableBool;    
     plotter();
     lasso.clear();
-    d3.select('.chart svg').selectAll('.date-lasso-line').remove();
+    d3.select(divID1+' svg').selectAll('.date-lasso-line').remove();
     if(heatMapEnableBool){
         d3.select(item).html("See Points")
     } else {

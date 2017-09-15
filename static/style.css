@@ -1,3 +1,8 @@
+html, body {
+    max-width: 100%;
+    overflow-x: hidden;
+}
+
 #app-container {
 	margin-top: 75px;
 }
@@ -19,13 +24,6 @@
 	float: left
 }
 
-
-#tooltip{
-	position: absolute;
-	top: 110px;
-	left: 1120px;
-}
-
 .tick{
 	font-size: 10px;
 }
@@ -40,7 +38,13 @@
 	stroke: black;
 }
 
-#timeline{
+.tooltips{
+	position: absolute;
+	top: 110px;
+	left: 1120px;
+}
+
+.chart{
 	overflow-x: scroll;
 	position: relative;
 	top: -20px;
@@ -56,13 +60,24 @@
 	margin-left: 5px;
 }
 
-#zoom-head{
+#zoom-head-1{
 	width: 50px;
 }
 
-#zoom-container{
+#zoom-container-1{
 	position: absolute;
     top: 380px;
+    right: 25px;
+    z-index: 2;
+}
+
+#zoom-head-2{
+	width: 50px;
+}
+
+#zoom-container-2{
+	position: absolute;
+    top: 665px;
     right: 25px;
     z-index: 2;
 }

@@ -72,9 +72,9 @@
                 <div class="col-md-3" id="left-pane">
                     <div class="left-pane-element" id="data-file">
                         <fieldset>
-                            <legend>Data File</legend>
-                            <label><input type="radio" name="data-file" value="official" onclick="plotter(this)" checked>Official</label>
-                            <label><input type="radio" name="data-file" value="unofficial" onclick="plotter(this)">Non-official</label>
+                            <legend>Map Data</legend>
+                            <label><input type="checkbox" id="map-data-official" class="data-file" name="data-file" value="official" checked>Official</label>
+                            <label><input type="checkbox" id="map-data-unofficial" class="data-file" name="data-file" value="unofficial">Non-official</label>
                         </fieldset>
                     </div>
                     <div class="left-pane-element" id="data-type">
@@ -123,12 +123,19 @@
                                     <option value="pink">Pink</option>
                                 </select>
                             </span> -->
-                            <span id="zoom-container">
-                                <span id="zoom-head">Zoom: </span>
-                                <span id="zoom-in" class="zoom-controller"> +</span>
-                                <span id="zoom-out" class="zoom-controller">-</span>
+                            <span id="zoom-container-1">
+                                <span id="zoom-head-1">Zoom: </span>
+                                <span id="zoom-in-1" class="zoom-controller"> +</span>
+                                <span id="zoom-out-1" class="zoom-controller">-</span>
                             </span>
-                            <div id="timeline" class="chart">
+                            <div id="timeline-1" class="chart">
+                            </div>
+                            <span id="zoom-container-2">
+                                <span id="zoom-head-2">Zoom: </span>
+                                <span id="zoom-in-2" class="zoom-controller"> +</span>
+                                <span id="zoom-out-2" class="zoom-controller">-</span>
+                            </span>
+                            <div id="timeline-2" class="chart">
                             </div>
                         </fieldset>
                 </div>

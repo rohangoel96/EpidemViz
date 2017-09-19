@@ -1,151 +1,109 @@
-<!DOCTYPE html>
-<html lang="en">
-    <head>
-        <meta charset="utf-8">
-        <meta http-equiv="X-UA-Compatible" content="IE=edge">
-        <meta name="viewport" content="width=device-width, initial-scale=1">
-        <meta name="description" content="">
-        <meta name="author" content="">
-        <title>EpidemVis</title>
-
-        <meta http-equiv="cache-control" content="max-age=0" />
-        <meta http-equiv="cache-control" content="no-cache" />
-        <meta http-equiv="expires" content="0" />
-        <meta http-equiv="expires" content="Tue, 01 Jan 1980 1:00:00 GMT" />
-        <meta http-equiv="pragma" content="no-cache" />
-
-        <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
-        <!-- Latest compiled and minified CSS -->
-        <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
-
-        <!-- Optional theme -->
-        <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap-theme.min.css" integrity="sha384-rHyoN1iRsVXV4nD0JutlnGaslCJuC7uwjduW9SVrLvRYooPp2bWYgmgJQIXwl/Sp" crossorigin="anonymous">
-
-        <!-- Latest compiled and minified JavaScript -->
-        <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
-
-        <script src="https://d3js.org/d3.v3.min.js"></script>
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/underscore.js/1.8.3/underscore-min.js"></script>
-
-        <link rel="stylesheet" href="https://unpkg.com/leaflet@1.2.0/dist/leaflet.css"
-        integrity="sha512-M2wvCLH6DSRazYeZRIm1JnYyh22purTM+FDB5CsyxtQJYeKq83arPe5wgbNmcFXGqiSH2XR8dT/fJISVA1r/zQ=="
-        crossorigin=""/>
-
-        <script src="https://unpkg.com/leaflet@1.2.0/dist/leaflet.js"
-        integrity="sha512-lInM/apFSqyy1o6s89K4iQUKg6ppXEgsVxT35HbzUupEVRh2Eu9Wdl4tHj7dZO0s1uvplcYGmt3498TtHq+log=="
-        crossorigin=""></script>
-
-        <script src="static/util/hsvtorgb.js"></script>
-
-
-        <link rel="stylesheet" type="text/css" href="static/style.css">
-    </head>
-    <body>
-        <nav class="navbar navbar-inverse navbar-fixed-top" role="navigation">
-            <div class="container">
-                <div class="navbar-header">
-                    <button type="button" class="navbar-toggle" data-toggle="collapse" data-target="#bs-example-navbar-collapse-1">
-                        <span class="sr-only">Toggle navigation</span>
-                        <span class="icon-bar"></span>
-                        <span class="icon-bar"></span>
-                        <span class="icon-bar"></span>
-                    </button>
-                    <a class="navbar-brand" href="/">EpidemVis</a>
-                </div>
-                <!-- <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
-                    <ul class="nav navbar-nav">
-                        <li>
-                            <a href="#">About</a>
-                        </li>
-                        <li>
-                            <a href="#">Services</a>
-                        </li>
-                        <li>
-                            <a href="#">Contact</a>
-                        </li>
-                    </ul>
-                </div> -->
+{% extends "layout.html" %}
+{% block body %}
+    <nav class="navbar navbar-inverse navbar-fixed-top" role="navigation">
+        <div class="container">
+            <div class="navbar-header">
+                <button type="button" class="navbar-toggle" data-toggle="collapse" data-target="#bs-example-navbar-collapse-1">
+                    <span class="sr-only">Toggle navigation</span>
+                    <span class="icon-bar"></span>
+                    <span class="icon-bar"></span>
+                    <span class="icon-bar"></span>
+                </button>
+                <a class="navbar-brand" href="/">EpidemVis</a>
             </div>
-        </nav>
-        <div class="container" id="app-container">
-            <div class="row">
-                <div class="col-md-3" id="left-pane">
-                    <div class="left-pane-element" id="data-file">
-                        <fieldset>
-                            <legend>Map Data</legend>
-                            <label><input type="checkbox" id="map-data-official" class="data-file" name="data-file" value="official" checked>Official</label>
-                            <label><input type="checkbox" id="map-data-unofficial" class="data-file" name="data-file" value="unofficial">Non-official</label>
-                        </fieldset>
-                    </div>
-                    <div class="left-pane-element" id="data-type">
-                        <fieldset>
-                            <legend>Data Type</legend>
-                            <label><input type="radio" value="diseases" onclick="plotter(this)" name="data-type" checked>Diseases</label>
-                            <label><input type="radio" value="species" onclick="plotter(this)" name="data-type">Hosts</label>
-                            <label><input type="radio" value="symptoms" onclick="plotter(this)" name="data-type">Symptoms</label>
-                        </fieldset>
-                    </div>
-                    <div class="left-pane-element" id="entities">
-                        <fieldset>
-                            <legend>Entities</legend>
-                            <div id="entity-diseases">
-                                <p>Diseases</p>
-                            </div>
-                            <div id="entity-host">
-                                <p>Hosts</p>
-                            </div>
-                            <div id="entity-symptoms">
-                                <p>Symptoms</p>
-                            </div>
-                        </fieldset>
-                    </div>
-                </div>
-                <div class="col-md-9" id="right-pane">
-                    <!-- <legend>Geographical Map</legend> -->
-                            <span id="lasso-container">
-                                <span id="lasso-head">Lasso: </span>
-                                <span id="lasso-enable" class="lasso-controller"><a href="#" onclick="lassoEnableHandler(this);return false;">Enable</a></span>
-                                <span id="lasso-reset" class="lasso-controller"><a href="#" onclick="lassoResetHandler(this)">Reset</a></span>
-                            </span>
-                            <span id="heatmap-container">
-                                <span><a id="heatmap-control" href="#" onclick="heatMapHandler(this)">See HeatMap</a></span>
-                            </span>
-                    <div id="map" class="map">
-                    
-                    </div>
+            <!-- <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
+                <ul class="nav navbar-nav">
+                    <li>
+                        <a href="#">About</a>
+                    </li>
+                    <li>
+                        <a href="#">Services</a>
+                    </li>
+                    <li>
+                        <a href="#">Contact</a>
+                    </li>
+                </ul>
+            </div> -->
+        </div>
+    </nav>
+    <div class="container" id="app-container">
+        <div class="row">
+            <div class="col-md-1">&nbsp;</div>
+            <div class="col-md-3" id="left-pane">
+                <div class="left-pane-element" id="data-file">
                     <fieldset>
-                            <!-- <legend>Timeline</legend> -->
-<!--                             <span>
-                                Color Scheme: 
-                                <select id="color-scheme" class="form-control">
-                                    <option value="orange">Orange</option>
-                                    <option value="blue">Blue</option>
-                                    <option value="pink">Pink</option>
-                                </select>
-                            </span> -->
-                            <span id="zoom-container-1">
-                                <span id="zoom-head-1">Zoom: </span>
-                                <span id="zoom-in-1" class="zoom-controller"> +</span>
-                                <span id="zoom-out-1" class="zoom-controller">-</span>
-                            </span>
-                            <div id="timeline-1" class="chart">
-                            </div>
-                            <span id="zoom-container-2">
-                                <span id="zoom-head-2">Zoom: </span>
-                                <span id="zoom-in-2" class="zoom-controller"> +</span>
-                                <span id="zoom-out-2" class="zoom-controller">-</span>
-                            </span>
-                            <div id="timeline-2" class="chart">
-                            </div>
-                        </fieldset>
+                        <legend>Map Data</legend>
+                        <label><input type="checkbox" id="map-data-official" class="data-file" name="data-file" value="official" checked>Official</label>
+                        <label><input type="checkbox" id="map-data-unofficial" class="data-file" name="data-file" value="unofficial">Non-official</label>
+                    </fieldset>
                 </div>
+                <div class="left-pane-element" id="data-type">
+                    <fieldset>
+                        <legend>Data Type</legend>
+                        <label><input type="radio" value="diseases" onclick="plotter(this)" name="data-type" checked>Diseases</label>
+                        <label><input type="radio" value="species" onclick="plotter(this)" name="data-type">Hosts</label>
+                        <label><input type="radio" value="symptoms" onclick="plotter(this)" name="data-type">Symptoms</label>
+                    </fieldset>
+                </div>
+                <div class="left-pane-element" id="entities">
+                    <fieldset>
+                        <legend>Entities</legend>
+                        <div id="entity-diseases" class="entity-container">
+                            <!-- <p>Diseases</p> -->
+                        </div>
+                        <div id="entity-species" class="entity-container">
+                            <!-- <p>Hosts</p> -->
+                        </div>
+                        <div id="entity-symptoms" class="entity-container">
+                            <!-- <p>Symptoms</p> -->
+                        </div>
+                    </fieldset>
+                </div>
+            </div>
+            <div class="col-md-7" id="right-pane">
+                <!-- <legend>Geographical Map</legend> -->
+                        <span id="lasso-container">
+                            <span id="lasso-head">Lasso: </span>
+                            <span id="lasso-enable" class="lasso-controller"><a href="#" onclick="lassoEnableHandler(this);return false;">Enable</a></span>
+                            <span id="lasso-reset" class="lasso-controller"><a href="#" onclick="lassoResetHandler(this)">Reset</a></span>
+                        </span>
+                        <span id="heatmap-container">
+                            <span><a id="heatmap-control" href="#" onclick="heatMapHandler(this)">See HeatMap</a></span>
+                        </span>
+                <div id="map" class="map">
+                
+                </div>
+                <fieldset>
+                        <!-- <legend>Timeline</legend> -->
+    <!--                             <span>
+                            Color Scheme: 
+                            <select id="color-scheme" class="form-control">
+                                <option value="orange">Orange</option>
+                                <option value="blue">Blue</option>
+                                <option value="pink">Pink</option>
+                            </select>
+                        </span> -->
+                        <span id="zoom-container-1">
+                            <span id="zoom-head-1">Zoom: </span>
+                            <span id="zoom-in-1" class="zoom-controller"> +</span>
+                            <span id="zoom-out-1" class="zoom-controller">-</span>
+                        </span>
+                        <div id="timeline-1" class="chart">
+                        </div>
+                        <span id="zoom-container-2">
+                            <span id="zoom-head-2">Zoom: </span>
+                            <span id="zoom-in-2" class="zoom-controller"> +</span>
+                            <span id="zoom-out-2" class="zoom-controller">-</span>
+                        </span>
+                        <div id="timeline-2" class="chart" style="margin-top: 10px">
+                        </div>
+                    </fieldset>
             </div>
         </div>
-        <script type="text/javascript" src="static/util/lasso/leaflet-src.js"></script>
-        <script type="text/javascript" src="static/util/lasso/leaflet-freedraw.web.js"></script>
-        <link rel="stylesheet" type="text/css" href="static/util/lasso/leaflet.css">
-        <script type="text/javascript" src="static/util/heatmap.min.js"></script>
-        <script type="text/javascript" src="static/script.js"></script>
-    </body>
-
-</html>
+    </div>
+    <script type="text/javascript" src="static/util/lasso/leaflet-src.js"></script>
+    <script type="text/javascript" src="static/util/lasso/leaflet-freedraw.web.js"></script>
+    <link rel="stylesheet" type="text/css" href="static/util/lasso/leaflet.css">
+    <script type="text/javascript" src="static/util/heatmap.min.js"></script>
+    <script type="text/javascript" src="static/script.js"></script>
+{% endblock%}

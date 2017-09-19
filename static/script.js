@@ -26,7 +26,7 @@ var lasso = new FreeDraw({
 
 $(document).ready(function() {
     plotter();
-    map = L.map('map').setView([20, 10], 2);
+    map = L.map('map').setView([20, 10], 1);
     map.on('zoomend', mapZoomHandler)
 
     map.addLayer(lasso);
@@ -57,14 +57,19 @@ function plotter() {
     dsv("/static/data/official.csv", function(error, officialData) {
         if (error) throw error;
         
-        var processedOfficialData = processData(officialData, $("input:radio[name=data-type]:checked").val());
+        var dataType = $("input:radio[name=data-type]:checked").val();
+        var processedOfficialData = processData(officialData, dataType);
+        
+        $(".entity-container").each(function(ind, div) {
+            $(div).css("display", ($(div).attr("id") == "entity-" + dataType? "block" : "none"))
+        })
 
         dsv("/static/data/un_official.csv", function(error, unofficialData) {
             if (error) throw error;
-            var processedUnofficialData = processData(unofficialData, $("input:radio[name=data-type]:checked").val());
+            var processedUnofficialData = processData(unofficialData, dataType);
             
             var combinedData = officialData.concat(unofficialData)
-            var processedCombinedData = processData(combinedData, $("input:radio[name=data-type]:checked").val());
+            var processedCombinedData = processData(combinedData, dataType);
 
             entityKeys = processedCombinedData[1]
             colorrange = generateDistinctColors(entityKeys.length)
@@ -84,7 +89,7 @@ function plotter() {
                 data: processedOfficialData[0],
                 margin: margin,
                 width: chartBoxWidth,
-                height: 250 - margin.top - margin.bottom,
+                height: 135 - margin.top - margin.bottom,
                 dataDateDict: processedOfficialData[2],
                 dates : processedOfficialData[3],
                 colorrange: colorrange,
@@ -101,7 +106,7 @@ function plotter() {
                 data: processedUnofficialData[0],
                 margin: margin,
                 width: chartBoxWidth,
-                height: 250 - margin.top - margin.bottom,
+                height: 135 - margin.top - margin.bottom,
                 dataDateDict: processedUnofficialData[2],
                 dates : processedUnofficialData[3],
                 colorrange: colorrange,
@@ -270,7 +275,7 @@ function processData(data, dataType) {
             dates.push(d.publication_date);
     });
 
-    appendEntities("#entity-host", species_host, 'species_')
+    appendEntities("#entity-species", species_host, 'species_')
     appendEntities("#entity-diseases", diseases, 'diseases_')
     appendEntities("#entity-symptoms", symptoms, 'symptoms_')
 
@@ -577,13 +582,13 @@ function drawTimeline(config) {
                 .attr("x2", dateToXScale(new Date(nearestMouseDate)))
                 .attr("opacity", "1");
 
-            tooltip1.html( "<p>" + d.key + ": <b>" + streamValue1 + "</b><br><span style='font-size: 12px; position: relative; top: -3px;'>" + timeDisplayFormat(new Date(nearestMouseDate)) + "</span></p>" ).style("visibility", "visible")
+            tooltip1.html( "<p style='font-size: 10px;'>" + d.key + ": <b>" + streamValue1 + "</b><br><span style='font-size: 9px; position: relative; top: -3px;'>" + timeDisplayFormat(new Date(nearestMouseDate)) + "</span></p>" ).style("visibility", "visible")
                 .style("left", ($(divID1).offset().left + parseFloat($("#vertical-hover-1")[0].getBBox().x) - $(divID1).scrollLeft() + 10) +"px")
-                .style("top", ($(divID1).offset().top + mousey - 70) +"px");
+                .style("top", ($(divID1).offset().top + mousey - 50) +"px");
 
-            tooltip2.html( "<p>" + d.key + ": <b>" + streamValue2 + "</b><br><span style='font-size: 12px; position: relative; top: -3px;'>" + timeDisplayFormat(new Date(nearestMouseDate)) + "</span></p>" ).style("visibility", "visible")
+            tooltip2.html( "<p style='font-size: 10px;'>" + d.key + ": <b>" + streamValue2 + "</b><br><span style='font-size: 9px; position: relative; top: -3px;'>" + timeDisplayFormat(new Date(nearestMouseDate)) + "</span></p>" ).style("visibility", "visible")
                 .style("left", (($(divID1).offset().left + parseFloat($("#vertical-hover-2")[0].getBBox().x) - $(divID2).scrollLeft() + 10)) +"px")
-                .style("top", ($(divID2).offset().top + mousey - 70) +"px");
+                .style("top", ($(divID2).offset().top + mousey - 50) +"px");
         })
         .on("mouseout", function(d, i) {
             d3.selectAll(".chart").selectAll(".layer")
@@ -742,9 +747,9 @@ function drawTimeline(config) {
 
     var dragArrow = d3.select(divID+" svg").append("line")
           .attr("x1", 0)
-          .attr("y1", config.height - 30)
+          .attr("y1", config.height - 15)
           .attr("x2", 0)
-          .attr("y2", config.height - 30)
+          .attr("y2", config.height - 15)
           .attr("opacity", 1)
           .style("stroke-width", 7)
           .style("stroke", "#aaa")
@@ -793,6 +798,7 @@ function zoomInHandler(config){
         config.width *= 1.2;
     }
     drawTimeline(config);
+    lassoResetHandler();
 }
 
 function zoomOutHandler(config){
@@ -802,6 +808,7 @@ function zoomOutHandler(config){
         config.width /= 1.2;
     }
     drawTimeline(config);
+    lassoResetHandler();
 }
 
 function colorSchemeHandler(config){
@@ -843,7 +850,7 @@ function lassoEnableHandler(){
 function lassoResetHandler() {
     lasso.clear();
     d3.selectAll(".chart svg").selectAll(".date-lasso-line").remove()
-    map.setView([20, 10], 2)
+    map.setView([20, 10], 1)
 
     if ($("#lasso-enable a")[0].text == "Disable") {
         lasso.mode(FreeDraw.CREATE + FreeDraw.EDIT);
@@ -867,7 +874,7 @@ function lassoTimelineHighlight(items){
                 .attr("x1", margin.left + x(new Date(item.date)))
                 .attr("y1", margin.top + 20)
                 .attr("x2", margin.left + x(new Date(item.date)))
-                .attr("y2", 228)
+                .attr("y2", 115)
                 .style("stroke-width", 1)
                 .style("stroke-dasharray", ("8, 8"))
                 .style("stroke",item.key ? colorrange[entityKeys.indexOf(item.key)]: "#aaa")
@@ -878,7 +885,7 @@ function lassoTimelineHighlight(items){
                 .attr("x1", margin.left + x(new Date(item.date)))
                 .attr("y1", margin.top + 20)
                 .attr("x2", margin.left + x(new Date(item.date)))
-                .attr("y2", 228)
+                .attr("y2", 115)
                 .style("stroke-width", 1)
                 .style("stroke-dasharray", ("8, 8"))
                 .style("stroke",item.key ? colorrange[entityKeys.indexOf(item.key)]: "#aaa")

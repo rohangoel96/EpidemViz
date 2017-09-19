@@ -1,10 +1,20 @@
 html, body {
     max-width: 100%;
     overflow-x: hidden;
+    overflow-y: hidden;
 }
 
 #app-container {
 	margin-top: 75px;
+}
+
+#left-pane{
+	font-size: 12px;
+}
+
+legend{
+	font-size: 16px;
+	margin-bottom: 15px;
 }
 
 #left-pane label{
@@ -17,11 +27,15 @@ html, body {
 }
 
 .left-pane-element {
-	margin: 0 0 20px 0;
+	margin: 0 0 40px 0;
 }
 
 .entities-checkbox{
 	float: left
+}
+
+.entity-container{
+	display: none
 }
 
 .tick{
@@ -53,7 +67,7 @@ html, body {
 .zoom-controller{
 	display: inline-block;
 	width: 25px;
-	font-size: 25px;
+	font-size: 20px;
 	position: relative;
 	top: 2px;
 	cursor: pointer;
@@ -61,23 +75,25 @@ html, body {
 }
 
 #zoom-head-1{
+	font-size: 12px;
 	width: 50px;
 }
 
 #zoom-container-1{
 	position: absolute;
-    top: 380px;
+    top: 250px;
     right: 25px;
     z-index: 2;
 }
 
 #zoom-head-2{
+	font-size: 12px;
 	width: 50px;
 }
 
 #zoom-container-2{
 	position: absolute;
-    top: 665px;
+    top: 410px;
     right: 25px;
     z-index: 2;
 }
@@ -90,8 +106,8 @@ html, body {
 }
 
 #map{
-	height: 350px;
-	width: 847.5px;
+	height: 225px;
+	width: 650px;
 	margin-bottom: 25px;
 }
 
@@ -127,4 +143,8 @@ html, body {
     stroke: #aaa;
     stroke-width: 2;
     fill-opacity: 0.5;
+}
+
+.leaflet-container {
+    background-color: rgb(170, 211, 223) !important
 }

@@ -23,32 +23,19 @@
 
         <!-- Latest compiled and minified JavaScript -->
         <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
-
-        <script src="https://d3js.org/d3.v3.min.js"></script>
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/underscore.js/1.8.3/underscore-min.js"></script>
-
-        <link rel="stylesheet" href="https://unpkg.com/leaflet@1.2.0/dist/leaflet.css"
-        integrity="sha512-M2wvCLH6DSRazYeZRIm1JnYyh22purTM+FDB5CsyxtQJYeKq83arPe5wgbNmcFXGqiSH2XR8dT/fJISVA1r/zQ=="
-        crossorigin=""/>
-
-        <script src="https://unpkg.com/leaflet@1.2.0/dist/leaflet.js"
-        integrity="sha512-lInM/apFSqyy1o6s89K4iQUKg6ppXEgsVxT35HbzUupEVRh2Eu9Wdl4tHj7dZO0s1uvplcYGmt3498TtHq+log=="
-        crossorigin=""></script>
-
-        <script src="static/util/hsvtorgb.js"></script>
-
-        <link rel="stylesheet" type="text/css" href="static/style.css">
+        <link rel="stylesheet" type="text/css" href="/static/flask_user.css"></style>
     </head>
     <body>
-        {% block body %}{% endblock %}
+    <div class="container">
+        {% block content %}{% endblock %}
         {# One-time system messages called Flash messages #}
         {% block flash_messages %}
             {%- with messages = get_flashed_messages(with_categories=true) -%}
                 {% if messages %}
                     {% for category, message in messages %}
-                        {% if category!='error' %}
+                        <!-- {% if category!='error' %} -->
                             <div class="alert alert-{{category}}" id="message" style="display: none">{{ message|safe }}</div>
-                        {% endif %}
+                        <!-- {% endif %} -->
                     {% endfor %}
                 {% endif %}
             {%- endwith %}
@@ -58,6 +45,7 @@
                 alert($($(".alert")[$(".alert").length - 1]).html());
             }
         </script>
+    </div>
     </body>
 
 </html>

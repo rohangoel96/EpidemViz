@@ -1,1 +1,5 @@
 flask
+passlib
+Flask-User==0.6.19
+flask_mail
+flask_sqlalchemy

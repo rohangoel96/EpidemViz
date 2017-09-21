@@ -17,6 +17,10 @@ legend{
 	margin-bottom: 15px;
 }
 
+.navbar-nav{
+	float: right;
+}
+
 #left-pane label{
 	display: block;
 	width: 100%

@@ -1,0 +1,103 @@
+{% extends "layout.html" %}
+{% block body %}
+    <nav class="navbar navbar-inverse navbar-fixed-top" role="navigation">
+        <div class="container">
+            <div class="navbar-header">
+                <button type="button" class="navbar-toggle" data-toggle="collapse" data-target="#bs-example-navbar-collapse-1">
+                    <span class="sr-only">Toggle navigation</span>
+                    <span class="icon-bar"></span>
+                    <span class="icon-bar"></span>
+                    <span class="icon-bar"></span>
+                </button>
+                <a class="navbar-brand" href="/">EpidemVis</a>
+            </div>
+            <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
+                <ul class="nav navbar-nav">
+                    <li>
+                        <span style="display: inline-block; color: rgb(157, 157, 157);">Hi {{ current_user.username }} !</span><a href="{{ url_for('user.logout') }}" style="display: inline-block;">Logout</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+    <div class="container" id="app-container">
+        <div class="row">
+            <div class="col-md-1">&nbsp;</div>
+            <div class="col-md-3" id="left-pane">
+                <div class="left-pane-element" id="data-file">
+                    <fieldset>
+                        <legend>Map Data</legend>
+                        <label><input type="checkbox" id="map-data-official" class="data-file" name="data-file" value="official" checked>Official</label>
+                        <label><input type="checkbox" id="map-data-unofficial" class="data-file" name="data-file" value="unofficial">Non-official</label>
+                    </fieldset>
+                </div>
+                <div class="left-pane-element" id="data-type">
+                    <fieldset>
+                        <legend>Data Type</legend>
+                        <label><input type="radio" value="diseases" onclick="plotter(this)" name="data-type" checked>Diseases</label>
+                        <label><input type="radio" value="species" onclick="plotter(this)" name="data-type">Hosts</label>
+                        <label><input type="radio" value="symptoms" onclick="plotter(this)" name="data-type">Symptoms</label>
+                    </fieldset>
+                </div>
+                <div class="left-pane-element" id="entities">
+                    <fieldset>
+                        <legend>Entities</legend>
+                        <div id="entity-diseases" class="entity-container">
+                            <!-- <p>Diseases</p> -->
+                        </div>
+                        <div id="entity-species" class="entity-container">
+                            <!-- <p>Hosts</p> -->
+                        </div>
+                        <div id="entity-symptoms" class="entity-container">
+                            <!-- <p>Symptoms</p> -->
+                        </div>
+                    </fieldset>
+                </div>
+            </div>
+            <div class="col-md-7" id="right-pane">
+                <!-- <legend>Geographical Map</legend> -->
+                        <span id="lasso-container">
+                            <span id="lasso-head">Lasso: </span>
+                            <span id="lasso-enable" class="lasso-controller"><a href="#" onclick="lassoEnableHandler(this);return false;">Enable</a></span>
+                            <span id="lasso-reset" class="lasso-controller"><a href="#" onclick="lassoResetHandler(this)">Reset</a></span>
+                        </span>
+                        <span id="heatmap-container">
+                            <span><a id="heatmap-control" href="#" onclick="heatMapHandler(this)">See HeatMap</a></span>
+                        </span>
+                <div id="map" class="map">
+                
+                </div>
+                <fieldset>
+                        <!-- <legend>Timeline</legend> -->
+    <!--                             <span>
+                            Color Scheme: 
+                            <select id="color-scheme" class="form-control">
+                                <option value="orange">Orange</option>
+                                <option value="blue">Blue</option>
+                                <option value="pink">Pink</option>
+                            </select>
+                        </span> -->
+                        <span id="zoom-container-1">
+                            <span id="zoom-head-1">Zoom: </span>
+                            <span id="zoom-in-1" class="zoom-controller"> +</span>
+                            <span id="zoom-out-1" class="zoom-controller">-</span>
+                        </span>
+                        <div id="timeline-1" class="chart">
+                        </div>
+                        <span id="zoom-container-2">
+                            <span id="zoom-head-2">Zoom: </span>
+                            <span id="zoom-in-2" class="zoom-controller"> +</span>
+                            <span id="zoom-out-2" class="zoom-controller">-</span>
+                        </span>
+                        <div id="timeline-2" class="chart" style="margin-top: 10px">
+                        </div>
+                    </fieldset>
+            </div>
+        </div>
+    </div>
+    <script type="text/javascript" src="static/util/lasso/leaflet-src.js"></script>
+    <script type="text/javascript" src="static/util/lasso/leaflet-freedraw.web.js"></script>
+    <link rel="stylesheet" type="text/css" href="static/util/lasso/leaflet.css">
+    <script type="text/javascript" src="static/util/heatmap.min.js"></script>
+    <script type="text/javascript" src="static/script.js"></script>
+{% endblock%}

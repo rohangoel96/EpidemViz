@@ -22,8 +22,8 @@
     </nav>
     <div class="container" id="app-container">
         <div class="row">
-            <div class="col-md-1">&nbsp;</div>
-            <div class="col-md-3" id="left-pane">
+            <span id="collapse-left"><p>Collapse</p></span>
+            <div class="col-md-2" id="left-pane">
                 <div class="left-pane-element" id="data-file">
                     <fieldset>
                         <legend>Map Data</legend>
@@ -43,18 +43,15 @@
                     <fieldset>
                         <legend>Entities</legend>
                         <div id="entity-diseases" class="entity-container">
-                            <!-- <p>Diseases</p> -->
                         </div>
                         <div id="entity-species" class="entity-container">
-                            <!-- <p>Hosts</p> -->
                         </div>
                         <div id="entity-symptoms" class="entity-container">
-                            <!-- <p>Symptoms</p> -->
                         </div>
                     </fieldset>
                 </div>
             </div>
-            <div class="col-md-7" id="right-pane">
+            <div class="col-md-10" id="right-pane">
                 <!-- <legend>Geographical Map</legend> -->
                         <span id="lasso-container">
                             <span id="lasso-head">Lasso: </span>
@@ -67,7 +64,7 @@
                 <div id="map" class="map">
                 
                 </div>
-                <fieldset>
+                <!-- <fieldset> -->
                         <!-- <legend>Timeline</legend> -->
     <!--                             <span>
                             Color Scheme: 
@@ -77,27 +74,31 @@
                                 <option value="pink">Pink</option>
                             </select>
                         </span> -->
-                        <span id="zoom-container-1">
+                        <span id="zoom-container-1" class="zoom-cont">
                             <span id="zoom-head-1">Zoom: </span>
                             <span id="zoom-in-1" class="zoom-controller"> +</span>
                             <span id="zoom-out-1" class="zoom-controller">-</span>
                         </span>
+                        <span id="collapse-time-1" class="collapseTimeline">Collapse T1</span>
                         <div id="timeline-1" class="chart">
                         </div>
-                        <span id="zoom-container-2">
+                        <span id="zoom-container-2" class="zoom-cont">
                             <span id="zoom-head-2">Zoom: </span>
                             <span id="zoom-in-2" class="zoom-controller"> +</span>
                             <span id="zoom-out-2" class="zoom-controller">-</span>
                         </span>
-                        <div id="timeline-2" class="chart" style="margin-top: 10px">
+                        <span id="collapse-time-2" class="collapseTimeline">Collapse T2</span>
+                        <div id="timeline-2" class="chart" style="margin-top: -25px">
                         </div>
-                    </fieldset>
+                    <!-- </fieldset> -->
             </div>
         </div>
     </div>
     <script type="text/javascript" src="static/util/lasso/leaflet-src.js"></script>
     <script type="text/javascript" src="static/util/lasso/leaflet-freedraw.web.js"></script>
     <link rel="stylesheet" type="text/css" href="static/util/lasso/leaflet.css">
+    <script type="text/javascript" src="static/util/extraShapesLeaflet.js"></script>
     <script type="text/javascript" src="static/util/heatmap.min.js"></script>
     <script type="text/javascript" src="static/script.js"></script>
+
 {% endblock%}

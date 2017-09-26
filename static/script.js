@@ -4,6 +4,7 @@ var timeParseFormat = d3.time.format("%Y-%m-%d");
 var timeDisplayFormat = d3.time.format("%d/%m/%y")
 var divID1 = "#timeline-1"
 var divID2 = "#timeline-2"
+var timelineHeight = 100;
 
 var mapDataSelector = "OFFICIAL"
 var chartBoxWidth = 0;
@@ -23,10 +24,12 @@ var lasso = new FreeDraw({
     maximumPolygons : 1,
     leaveModeAfterCreate: true
 }); //https://github.com/Wildhoney/Leaflet.FreeDraw
+var lassoPolygon= null;
+var collapseTimelineNumber = 0;
 
 $(document).ready(function() {
     plotter();
-    map = L.map('map').setView([20, 10], 1);
+    map = L.map('map').setView([35, 10], 1);
     map.on('zoomend', mapZoomHandler)
 
     map.addLayer(lasso);
@@ -39,16 +42,15 @@ $(document).ready(function() {
                 polygonList.forEach(function(latLng) {
                     lassoPolygonList.push([latLng.lat, latLng.lng])
                 })
-                var lassoPolygon = L.polygon(lassoPolygonList);
+                lassoPolygon = L.polygon(lassoPolygonList);
                 // lassoPolygon.addTo(map)
-                lassoHandler(lassoPolygon)
+                lassoHandler()
             })
         }
     });
 
     $(divID1).on('scroll', function () {$(divID2).scrollLeft($(this).scrollLeft());});
     $(divID2).on('scroll', function () {$(divID1).scrollLeft($(this).scrollLeft());});
-
 });
 
 function plotter() {
@@ -84,12 +86,12 @@ function plotter() {
                 entityKeys: entityKeys
             }
 
-            drawTimeline({
+            var timeline1Config = {
                 divID: divID1,
                 data: processedOfficialData[0],
                 margin: margin,
                 width: chartBoxWidth,
-                height: 135 - margin.top - margin.bottom,
+                height: timelineHeight - margin.top - margin.bottom,
                 dataDateDict: processedOfficialData[2],
                 dates : processedOfficialData[3],
                 colorrange: colorrange,
@@ -99,14 +101,14 @@ function plotter() {
                     unofficial: processedUnofficialData[2]
                 },
                 mapConfig: mapConfig
-            });
+            }
 
-            drawTimeline({
+            var timeline2Config = {
                 divID: divID2,
                 data: processedUnofficialData[0],
                 margin: margin,
                 width: chartBoxWidth,
-                height: 135 - margin.top - margin.bottom,
+                height: timelineHeight - margin.top - margin.bottom,
                 dataDateDict: processedUnofficialData[2],
                 dates : processedUnofficialData[3],
                 colorrange: colorrange,
@@ -116,8 +118,10 @@ function plotter() {
                     unofficial: processedUnofficialData[2]
                 },
                 mapConfig: mapConfig
-            });
+            }
 
+            drawTimeline(timeline1Config);
+            drawTimeline(timeline2Config);
             geoMapHandler(mapConfig, false)
 
             $(".data-file").change(function() {
@@ -133,6 +137,33 @@ function plotter() {
                 }
                 geoMapHandler(mapConfig)
             });
+
+            d3.select("#collapse-time-1").on("click", function() {
+                handleTimelineCollapse(1, $("#collapse-time-1"), mapConfig)
+                })
+            d3.select("#collapse-time-2").on("click", function() {
+                handleTimelineCollapse(2, $("#collapse-time-2"), mapConfig)
+            })
+
+            d3.select("#collapse-left p").on("click", function() {
+                if ($("#collapse-left p").html() == "Collapse") {
+                    $("#left-pane").css("display", "none");
+                    $("#collapse-left p").html("Expand");
+                    $("#right-pane").css("width", "1175px");
+                    timeline1Config.width = $("#timeline-1").width() - margin.left - margin.right
+                    timeline2Config.width = $("#timeline-1").width() - margin.left - margin.right
+                    drawTimeline(timeline1Config);
+                    drawTimeline(timeline2Config);
+                } else {
+                    $("#left-pane").css("display", "block");
+                    $("#collapse-left p").html("Collapse");
+                    $("#right-pane").css("width", "975px");
+                    timeline1Config.width = $("#timeline-1").width() - margin.left - margin.right
+                    timeline2Config.width = $("#timeline-1").width() - margin.left - margin.right
+                    drawTimeline(timeline1Config);
+                    drawTimeline(timeline2Config);
+                }
+            })
 
             //update colors for entities
             $(".enties-label").css("color", "black")
@@ -239,10 +270,12 @@ function geoMapHandler(mapConfig, trimmingBool=true) {
 
             if (item.date >= startDate && item.date <= endDate && item.location.length > 0) {
                 item.location.forEach(function(location) {
-                    var circle = L.circle(location, {
+                    // https://github.com/rowanwins/Leaflet.SvgShapeMarkers
+                    var circle = L.shapeMarker(location, {
+                        shape: item.reliability == "official" ? "circle" : "triangle",
                         color: colorrange[entityKeys.indexOf(item.key)],
                         fill: colorrange[entityKeys.indexOf(item.key)],
-                        radius: giveRadiusForMarkersZoom()
+                        radius: 0.5
                     }).bindPopup("Date: "+item.date.toISOString().split('T')[0]+"<br>Entity: "+item.key+"<br>Confidence: "+item.confidence);
                     markers.addLayer(circle);
                     markersArray.push({
@@ -520,7 +553,7 @@ function drawTimeline(config) {
     var verticalHover = d3.select(divID1+" svg").append("line")
         .attr("class", "verticalHover")
         .attr("x1", 0)
-        .attr("y1", 20)
+        .attr("y1", 0)
         .attr("x2", 0)
         .attr("y2", config.height)
         .style("stroke-width", 3)
@@ -533,7 +566,7 @@ function drawTimeline(config) {
     var verticalHover2 = d3.select(divID2+" svg").append("line")
         .attr("class", "verticalHover")
         .attr("x1", 0)
-        .attr("y1", 20)
+        .attr("y1", 0)
         .attr("x2", 0)
         .attr("y2", config.height)
         .style("stroke-width", 3)
@@ -584,11 +617,11 @@ function drawTimeline(config) {
 
             tooltip1.html( "<p style='font-size: 10px;'>" + d.key + ": <b>" + streamValue1 + "</b><br><span style='font-size: 9px; position: relative; top: -3px;'>" + timeDisplayFormat(new Date(nearestMouseDate)) + "</span></p>" ).style("visibility", "visible")
                 .style("left", ($(divID1).offset().left + parseFloat($("#vertical-hover-1")[0].getBBox().x) - $(divID1).scrollLeft() + 10) +"px")
-                .style("top", ($(divID1).offset().top + mousey - 50) +"px");
+                .style("top", ($(divID1).offset().top + mousey - 25) +"px");
 
             tooltip2.html( "<p style='font-size: 10px;'>" + d.key + ": <b>" + streamValue2 + "</b><br><span style='font-size: 9px; position: relative; top: -3px;'>" + timeDisplayFormat(new Date(nearestMouseDate)) + "</span></p>" ).style("visibility", "visible")
                 .style("left", (($(divID1).offset().left + parseFloat($("#vertical-hover-2")[0].getBBox().x) - $(divID2).scrollLeft() + 10)) +"px")
-                .style("top", ($(divID2).offset().top + mousey - 50) +"px");
+                .style("top", ($(divID2).offset().top + mousey - 25) +"px");
         })
         .on("mouseout", function(d, i) {
             d3.selectAll(".chart").selectAll(".layer")
@@ -631,7 +664,9 @@ function drawTimeline(config) {
                     d3.selectAll(".dragWhiteRectStart").attr("width", x1New - 2)
                         .attr("opacity", 0.3)
                 }
-                dragArrow.attr("visibility", "hidden")
+                d3.selectAll(".dragArrow").attr("visibility", "hidden")
+                d3.selectAll(".verticalHover").attr("visibility", "hidden")
+                d3.selectAll(".tooltips").style("display", "none")
              }).on('dragend', function(d){
                 var mouseDate = x.invert(parseFloat(d3.select(this).attr('x1'))).toISOString().split('T')[0];
                 trimStartDate = mouseDate;
@@ -640,6 +675,8 @@ function drawTimeline(config) {
                 if (parseFloat(verticalDateEnd.attr("x1")) - parseFloat(verticalDateStart.attr("x1")) < 0.9*width) {
                     var newArrowX = (parseFloat(verticalDateStart.attr("x1")) + parseFloat(verticalDateEnd.attr("x1")))/2
                     d3.selectAll(".dragArrow").attr("visibility", "visibile").attr("x1", newArrowX-20).attr("x2", newArrowX+20)
+                    d3.selectAll(".verticalHover").attr("visibility", "visible")
+                    d3.selectAll(".tooltips").style("display", "block")
                 }
              }); 
                
@@ -655,7 +692,9 @@ function drawTimeline(config) {
                         .attr("x", x2New + 2)
                         .attr("opacity", 0.3)
             }
-            dragArrow.attr("visibility", "hidden")
+            d3.selectAll(".dragArrow").attr("visibility", "hidden")
+            d3.selectAll(".verticalHover").attr("visibility", "hidden")
+            d3.selectAll(".tooltips").style("display", "none")
          }).on('dragend', function(d) {
             var mouseDate = x.invert(parseFloat(d3.select(this).attr('x1'))).toISOString().split('T')[0];
             trimEndDate = mouseDate;
@@ -664,6 +703,8 @@ function drawTimeline(config) {
             if (parseFloat(verticalDateEnd.attr("x1")) - parseFloat(verticalDateStart.attr("x1")) < 0.9*width) {
                 var newArrowX = (parseFloat(verticalDateStart.attr("x1")) + parseFloat(verticalDateEnd.attr("x1")))/2
                 d3.selectAll(".dragArrow").attr("visibility", "visibile").attr("x1", newArrowX-20).attr("x2", newArrowX+20)
+                d3.selectAll(".verticalHover").attr("visibility", "visible")
+                d3.selectAll(".tooltips").style("display", "block")
             }
          });
 
@@ -684,11 +725,15 @@ function drawTimeline(config) {
                         .attr("x", dragRectEndNew + 2)
                         .attr("opacity", 0.3)
             }
+            d3.selectAll(".verticalHover").attr("visibility", "hidden")
+            d3.selectAll(".tooltips").style("display", "none")
         }).on('dragend', function(d) {
             d3.selectAll(".dragWhiteRectStart").attr("opacity", 0.6)
             d3.selectAll(".dragWhiteRectEnd").attr("opacity", 0.6)
             trimStartDate = x.invert(parseFloat(verticalDateStart.attr('x1'))).toISOString().split('T')[0];
             trimEndDate = x.invert(parseFloat(verticalDateEnd.attr('x1'))).toISOString().split('T')[0];
+            d3.selectAll(".verticalHover").attr("visibility", "visible")
+            d3.selectAll(".tooltips").style("display", "block")
             geoMapHandler(config.mapConfig);
         }); 
            
@@ -696,7 +741,7 @@ function drawTimeline(config) {
     var verticalDateStart = svg.append("line")
             .attr("class", "date-select-line verticalDateStart")
             .attr("x1", 2)
-            .attr("y1", 20)
+            .attr("y1", 0)
             .attr("x2", 2)
             .attr("y2", config.height)
             .style("stroke-width", 4)
@@ -707,7 +752,7 @@ function drawTimeline(config) {
     var verticalDateEnd = svg.append("line")
             .attr("class", "date-select-line verticalDateEnd")
             .attr("x1", width-2)
-            .attr("y1", 20)
+            .attr("y1", 0)
             .attr("x2", width-2)
             .attr("y2", config.height)
             .style("stroke-width", 4)
@@ -761,12 +806,12 @@ function drawTimeline(config) {
           .attr("visibility", "hidden")
           .on("click", null)
           .on("dblclick",function(){
-                geoMapHandler(config.mapConfig)
-                d3.selectAll(".dragWhiteRectStart").attr("width", 0)
-                d3.selectAll(".dragWhiteRectEnd").attr("width", 0).attr("x", width) 
-                d3.selectAll(".verticalDateStart").attr("x1", 2).attr("x2", 2)
-                d3.selectAll(".verticalDateEnd").attr("x1", width-2).attr("x2", width-2)
-                d3.selectAll(".dragArrow").attr("visibility", "hidden")
+                // geoMapHandler(config.mapConfig)
+                // d3.selectAll(".dragWhiteRectStart").attr("width", 0)
+                // d3.selectAll(".dragWhiteRectEnd").attr("width", 0).attr("x", width) 
+                // d3.selectAll(".verticalDateStart").attr("x1", 2).attr("x2", 2)
+                // d3.selectAll(".verticalDateEnd").attr("x1", width-2).attr("x2", width-2)
+                // d3.selectAll(".dragArrow").attr("visibility", "hidden")
           });
 
     if(divID == "#timeline-1"){
@@ -798,7 +843,10 @@ function zoomInHandler(config){
         config.width *= 1.2;
     }
     drawTimeline(config);
-    lassoResetHandler();
+    if (lassoPolygon) {
+        lassoHandler()
+    }
+    $(divID1).scrollLeft($(divID1).offset().left + $(divID1).width() / 2)
 }
 
 function zoomOutHandler(config){
@@ -808,7 +856,10 @@ function zoomOutHandler(config){
         config.width /= 1.2;
     }
     drawTimeline(config);
-    lassoResetHandler();
+    if (lassoPolygon) {
+        lassoHandler()
+    }
+    $(divID1).scrollLeft($(divID1).offset().left + $(divID1).width() / 2)
 }
 
 function colorSchemeHandler(config){
@@ -816,7 +867,7 @@ function colorSchemeHandler(config){
     drawTimeline(config);
 }
 
-function lassoHandler(lassoPolygon){
+function lassoHandler(){
     // or check if a point is inside the selected path
     var items = []
     if(heatMapEnableBool){
@@ -842,6 +893,7 @@ function lassoEnableHandler(){
     } else {
         lasso.mode(FreeDraw.NONE);
         lasso.clear();
+        lassoPolygon = null;
         d3.selectAll(".chart svg").selectAll(".date-lasso-line").remove()
         $("#lasso-enable a")[0].text = "Enable"
     }
@@ -849,8 +901,9 @@ function lassoEnableHandler(){
 
 function lassoResetHandler() {
     lasso.clear();
+    lassoPolygon = null;
     d3.selectAll(".chart svg").selectAll(".date-lasso-line").remove()
-    map.setView([20, 10], 1)
+    map.setView([35, 10], 1)
 
     if ($("#lasso-enable a")[0].text == "Disable") {
         lasso.mode(FreeDraw.CREATE + FreeDraw.EDIT);
@@ -872,9 +925,9 @@ function lassoTimelineHighlight(items){
             svg1.append("line")
                 .attr("class", "date-lasso-line")
                 .attr("x1", margin.left + x(new Date(item.date)))
-                .attr("y1", margin.top + 20)
+                .attr("y1", margin.top)
                 .attr("x2", margin.left + x(new Date(item.date)))
-                .attr("y2", 115)
+                .attr("y2", timelineHeight - 18)
                 .style("stroke-width", 1)
                 .style("stroke-dasharray", ("8, 8"))
                 .style("stroke",item.key ? colorrange[entityKeys.indexOf(item.key)]: "#aaa")
@@ -883,9 +936,9 @@ function lassoTimelineHighlight(items){
             svg2.append("line")
                 .attr("class", "date-lasso-line")
                 .attr("x1", margin.left + x(new Date(item.date)))
-                .attr("y1", margin.top + 20)
+                .attr("y1", margin.top)
                 .attr("x2", margin.left + x(new Date(item.date)))
-                .attr("y2", 115)
+                .attr("y2", timelineHeight - 18)
                 .style("stroke-width", 1)
                 .style("stroke-dasharray", ("8, 8"))
                 .style("stroke",item.key ? colorrange[entityKeys.indexOf(item.key)]: "#aaa")
@@ -917,6 +970,7 @@ function heatMapHandler(item) {
     heatMapEnableBool = !heatMapEnableBool;    
     plotter();
     lasso.clear();
+    lassoPolygon = null;
     d3.select(divID1+' svg').selectAll('.date-lasso-line').remove();
     if(heatMapEnableBool){
         d3.select(item).html("See Points")
@@ -929,14 +983,40 @@ function giveRadiusForMarkersZoom(){
     var currentZoom = map.getZoom();
     var radiusMultiplier;
 
-    if (currentZoom <=1){ 
+    if (currentZoom <= 1){ 
         radiusMultiplier = 1
     } else if (currentZoom <= 3) {
-        radiusMultiplier = currentZoom + 2; 
+        radiusMultiplier = currentZoom + 1; 
     } else if (currentZoom <= 7) {
-        radiusMultiplier = currentZoom + 1;
+        radiusMultiplier = currentZoom + 2;
     } else { 
         radiusMultiplier = 8;
     }
-    return 5000 * radiusMultiplier;
+    return radiusMultiplier;
+}
+
+function handleTimelineCollapse(timelineNo, element, mapConfig){
+    $("#timeline-"+timelineNo).slideToggle("slow");
+    if ($(element).html().split(" ")[0] == "Collapse"){
+        if (timelineNo == 1) { $("#zoom-container-1").hide()}
+        else if (timelineNo == 2) { $("#zoom-container-2").hide()}
+        $(element).html("Expand T"+timelineNo)
+        collapseTimelineNumber += 1;
+    } else {
+        if (timelineNo == 1) { $("#zoom-container-1").show()}
+        else if (timelineNo == 2) { $("#zoom-container-2").show()}
+        $(element).html("Collapse T"+timelineNo)
+        collapseTimelineNumber -= 1;
+    }
+
+    if(collapseTimelineNumber == 1){
+        $("#map").css("height", (300 + timelineHeight)+"px");
+        map.setView([35, 10], 2)
+    } else if (collapseTimelineNumber == 2){
+        $("#map").css("height", (300 + 2*timelineHeight)+"px");
+        map.setView([43, 15], 2)
+    } else {
+        $("#map").css("height", "300px");
+        map.setView([35, 10], 1)
+    }
 }

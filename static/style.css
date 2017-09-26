@@ -5,7 +5,7 @@ html, body {
 }
 
 #app-container {
-	margin-top: 75px;
+	margin-top: 60px;
 }
 
 #left-pane{
@@ -63,17 +63,16 @@ legend{
 }
 
 .chart{
+	width: 100%;
 	overflow-x: scroll;
 	position: relative;
-	top: -20px;
+	top: -35px;
 }
 
 .zoom-controller{
 	display: inline-block;
 	width: 25px;
 	font-size: 20px;
-	position: relative;
-	top: 2px;
 	cursor: pointer;
 	margin-left: 5px;
 }
@@ -84,9 +83,9 @@ legend{
 }
 
 #zoom-container-1{
-	position: absolute;
-    top: 250px;
-    right: 25px;
+    position: relative;
+    float: right;
+    top: -25px;
     z-index: 2;
 }
 
@@ -96,9 +95,9 @@ legend{
 }
 
 #zoom-container-2{
-	position: absolute;
-    top: 410px;
-    right: 25px;
+    position: relative;
+    float: right;
+    top: -30px;
     z-index: 2;
 }
 
@@ -110,8 +109,8 @@ legend{
 }
 
 #map{
-	height: 225px;
-	width: 650px;
+	height: 300px;
+	width: 100%;
 	margin-bottom: 25px;
 }
 
@@ -151,4 +150,17 @@ legend{
 
 .leaflet-container {
     background-color: rgb(170, 211, 223) !important
+}
+
+.collapseTimeline{
+	position: relative;
+	top: -25px;
+}
+
+#collapse-left p{
+	writing-mode:tb-rl;
+    transform: rotate(180deg);
+    position: fixed;
+    top: 275px;
+    left: 50px;
 }

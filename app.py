@@ -49,7 +49,7 @@ user_manager = UserManager(db_adapter, app)     # Initialize Flask-User
 
 
 @app.route("/viz")
-@login_required
+# @login_required
 def viz():
     return render_template('viz.html')
 

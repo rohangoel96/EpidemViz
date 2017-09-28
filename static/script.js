@@ -1,32 +1,36 @@
 var fillInMissingDates = false;  //fill in missing dates in the data
-var margin = {top: 0, right: 0, bottom: 20, left: 0};
-var timeParseFormat = d3.time.format("%Y-%m-%d");
-var timeDisplayFormat = d3.time.format("%d/%m/%y")
-var divID1 = "#timeline-1"
-var divID2 = "#timeline-2"
-var timelineHeight = 100;
+var margin = {top: 0, right: 0, bottom: 20, left: 0}; //margin for timelines
+var timeParseFormat = d3.time.format("%Y-%m-%d"); //time format in csv files
+var timeDisplayFormat = d3.time.format("%d/%m/%y"); //time format to be displayed on screen
+var divID1 = "#timeline-1"; //id of the div containing timeline 1
+var divID2 = "#timeline-2"; //id of the div containing timeline 2
+var timelineHeight = 100; //height of timeline div
 
-var mapDataSelector = "OFFICIAL"
-var chartBoxWidth = 0;
-var timeStartDate = -1;
-var timeEndDate = -1;
-var width;
-var trimStartDate = -1
-var trimEndDate = -1
-var heatMapEnableBool = false;
-var markers = new L.FeatureGroup();
-var heatMap = new L.FeatureGroup();
-var markersArray = []
-var heatMapMarkers = []
+var mapDataSelector = "OFFICIAL" //to decide data to be shown on map
+var chartBoxWidth = 0; //the width of timeline without stretch
+var timeStartDate = -1; //start date of data/timeline
+var timeEndDate = -1; //end date of data/timeline
+var width; //width of timeline including zoom
+var trimStartDate = -1; //start date post trim
+var trimEndDate = -1; //end date post trim
+var heatMapEnableBool = false; //bool to toggle between HEATMAP/POINTS on map
+var markers = new L.FeatureGroup(); //containes point markers for map
+var heatMap = new L.FeatureGroup(); //contains heatmap for map
+var markersArray = []; //contains markers (point) - used for lasso
+var heatMapMarkers = []; //contains markers (heatmap) - used for lasso
 var lasso = new FreeDraw({
     recreateAfterEdit: true,
     strokeWidth: 1,
     maximumPolygons : 1,
     leaveModeAfterCreate: true
 }); //https://github.com/Wildhoney/Leaflet.FreeDraw
-var lassoPolygon= null;
-var collapseTimelineNumber = 0;
+var lassoPolygon= null; //the lasso selection polygon
+var collapseTimelineNumber = 0; //number of timelines which are collapsed at the moment
 
+
+/*
+    Do the following when the page loads for the first time
+ */
 $(document).ready(function() {
     plotter();
     map = L.map('map').setView([35, 10], 1);
@@ -35,26 +39,32 @@ $(document).ready(function() {
     map.addLayer(lasso);
     lasso.mode(FreeDraw.NONE)
     lasso.on('markers', event => {
-        var lassoPointListofList = event.latLngs
+        var lassoPointListofList = event.latLngs;
         if(lassoPointListofList) {
-            var lassoPolygonList = []
+            var lassoPolygonList = [];
             lassoPointListofList.forEach(function(polygonList) {
                 polygonList.forEach(function(latLng) {
-                    lassoPolygonList.push([latLng.lat, latLng.lng])
+                    lassoPolygonList.push([latLng.lat, latLng.lng]);
                 })
                 lassoPolygon = L.polygon(lassoPolygonList);
                 // lassoPolygon.addTo(map)
-                lassoHandler()
+                lassoHandler();
             })
         }
     });
 
+    //match scrolls on both the div
     $(divID1).on('scroll', function () {$(divID2).scrollLeft($(this).scrollLeft());});
     $(divID2).on('scroll', function () {$(divID1).scrollLeft($(this).scrollLeft());});
 });
 
+
+/*
+    Handles the building of timeline and map
+    and is triggered if there is any change in data
+ */
 function plotter() {
-    var dsv = d3.dsv(";", "text/plain");
+    var dsv = d3.dsv(";", "text/plain"); //seperator in CSV = ;
 
     dsv("/static/data/official.csv", function(error, officialData) {
         if (error) throw error;
@@ -62,30 +72,33 @@ function plotter() {
         var dataType = $("input:radio[name=data-type]:checked").val();
         var processedOfficialData = processData(officialData, dataType);
         
+        //hide the entity for the unselected data types
         $(".entity-container").each(function(ind, div) {
-            $(div).css("display", ($(div).attr("id") == "entity-" + dataType? "block" : "none"))
+            $(div).css("display", ($(div).attr("id") == "entity-" + dataType? "block" : "none"));
         })
 
         dsv("/static/data/un_official.csv", function(error, unofficialData) {
             if (error) throw error;
             var processedUnofficialData = processData(unofficialData, dataType);
             
-            var combinedData = officialData.concat(unofficialData)
+            var combinedData = officialData.concat(unofficialData); //combined official and unofficial data
             var processedCombinedData = processData(combinedData, dataType);
 
-            entityKeys = processedCombinedData[1]
-            colorrange = generateDistinctColors(entityKeys.length)
+            entityKeys = processedCombinedData[1]; //entity values should be decided from the combined data
+            colorrange = generateDistinctColors(entityKeys.length); //colors for each of the entity
 
             chartBoxWidth = $("#timeline-1").width() - margin.left - margin.right;
 
+            //configuration object for the geographical map
             var mapConfig = {
                 combinedData: processedCombinedData[0],
                 officialData: processedOfficialData[0],
                 unofficialData: processedUnofficialData[0],
                 colorrange: colorrange,
                 entityKeys: entityKeys
-            }
+            };
 
+            //configuration object for the first timeline
             var timeline1Config = {
                 divID: divID1,
                 data: processedOfficialData[0],
@@ -101,8 +114,9 @@ function plotter() {
                     unofficial: processedUnofficialData[2]
                 },
                 mapConfig: mapConfig
-            }
+            };
 
+            //configuration object for the second timeline
             var timeline2Config = {
                 divID: divID2,
                 data: processedUnofficialData[0],
@@ -118,57 +132,61 @@ function plotter() {
                     unofficial: processedUnofficialData[2]
                 },
                 mapConfig: mapConfig
-            }
+            };
 
-            drawTimeline(timeline1Config);
-            drawTimeline(timeline2Config);
-            geoMapHandler(mapConfig, false)
+            drawTimeline(timeline1Config); //draw the timeline 1
+            drawTimeline(timeline2Config); //draw the timeline 2
+            geoMapHandler(mapConfig, false); //draw the map
 
+
+            //handle selection of official/unofficial/both data on the geo map
             $(".data-file").change(function() {
                 if($("#map-data-official").is(":checked") && $("#map-data-unofficial").is(":checked")) {
                     mapDataSelector = "BOTH";
                 } else if ($("#map-data-official").is(":checked")){
-                    mapDataSelector = "OFFICIAL"
+                    mapDataSelector = "OFFICIAL";
                 } else if ($("#map-data-unofficial").is(":checked")){
-                    mapDataSelector = "UNOFFICIAL"
+                    mapDataSelector = "UNOFFICIAL";
                 } else {
-                    mapDataSelector = "OFFICIAL"
-                    $("#map-data-official").prop("checked", true)
+                    mapDataSelector = "OFFICIAL";
+                    $("#map-data-official").prop("checked", true);
                 }
-                geoMapHandler(mapConfig)
+                geoMapHandler(mapConfig); //update map
             });
 
+            //handle collapsing of both timelines
             d3.select("#collapse-time-1").on("click", function() {
-                handleTimelineCollapse(1, $("#collapse-time-1"), mapConfig)
+                handleTimelineCollapse(1, $("#collapse-time-1"), mapConfig);
                 })
             d3.select("#collapse-time-2").on("click", function() {
-                handleTimelineCollapse(2, $("#collapse-time-2"), mapConfig)
+                handleTimelineCollapse(2, $("#collapse-time-2"), mapConfig);
             })
 
+            //handle collapsing of the left pane
             d3.select("#collapse-left p").on("click", function() {
                 if ($("#collapse-left p").html() == "Collapse") {
                     $("#left-pane").css("display", "none");
                     $("#collapse-left p").html("Expand");
                     $("#right-pane").css("width", "1175px");
-                    timeline1Config.width = $("#timeline-1").width() - margin.left - margin.right
-                    timeline2Config.width = $("#timeline-1").width() - margin.left - margin.right
+                    timeline1Config.width = $("#timeline-1").width() - margin.left - margin.right;
+                    timeline2Config.width = $("#timeline-1").width() - margin.left - margin.right;
                     drawTimeline(timeline1Config);
                     drawTimeline(timeline2Config);
                 } else {
                     $("#left-pane").css("display", "block");
                     $("#collapse-left p").html("Collapse");
                     $("#right-pane").css("width", "975px");
-                    timeline1Config.width = $("#timeline-1").width() - margin.left - margin.right
-                    timeline2Config.width = $("#timeline-1").width() - margin.left - margin.right
+                    timeline1Config.width = $("#timeline-1").width() - margin.left - margin.right;
+                    timeline2Config.width = $("#timeline-1").width() - margin.left - margin.right;
                     drawTimeline(timeline1Config);
                     drawTimeline(timeline2Config);
                 }
             })
 
-            //update colors for entities
+            //update colors for entities in the left pane
             $(".enties-label").css("color", "black")
             $( "label[id^='label_"+$("input:radio[name=data-type]:checked").val()+"']").each(function(ind, item) {
-                $(this).css("color", colorrange[entityKeys.indexOf($(this).attr("id").split("_")[2])])
+                $(this).css("color", colorrange[entityKeys.indexOf($(this).attr("id").split("_")[2])]);
             })
 
         });
@@ -177,11 +195,18 @@ function plotter() {
 
 }
 
+
+/**
+ * Handles the drawing and update of the geographical map
+ * @param  {object} mapConfig configuration object for the map
+ * @param  {Boolean} trimmingBool to enable/disable trimming effects on the map
+ */
 function geoMapHandler(mapConfig, trimmingBool=true) {
     var entityKeys = mapConfig.entityKeys;
     var colorrange = mapConfig.colorrange;
-    var data;
+    var data, startDate, endDate;
 
+    //select which data to display on map
     if (mapDataSelector == "OFFICIAL") {
         data = mapConfig.officialData;
     } else if (mapDataSelector == "UNOFFICIAL"){
@@ -190,10 +215,11 @@ function geoMapHandler(mapConfig, trimmingBool=true) {
         data = mapConfig.combinedData;
     }
 
+    //clear variables before drawing the map
     markers.clearLayers();
     heatMap.clearLayers();
-    markersArray = []
-    heatMapMarkers = []
+    markersArray = [];
+    heatMapMarkers = [];
 
     L.tileLayer('http://{s}.tile.osm.org/{z}/{x}/{y}.png', {
         // attribution: '&copy; <a href="http://osm.org/copyright">OpenStreetMap</a> contributors',
@@ -202,47 +228,46 @@ function geoMapHandler(mapConfig, trimmingBool=true) {
         minZoom: 1,
     }).addTo(map);
 
+    //if trimming has been done select trimming dates as start and end date
+    if(trimmingBool){
+        startDate = new Date(trimStartDate);
+        endDate = new Date(trimEndDate);
+        if (trimStartDate == -1) startDate = new Date(timeStartDate);
+        if (trimEndDate == -1) endDate = new Date(timeEndDate);
+
+    } else {
+        startDate = new Date(timeStartDate);
+        endDate = new Date(timeEndDate);
+    }
+    
+    //if heatmap is selected
     if (heatMapEnableBool) {
         var dataLocationDict = {};
         var heatmapLocationData = [];
         var maxDataLocationCount = -1;
-
         data.forEach(function(item){
-            var startDate;
-            var endDate;
-            if(trimmingBool){
-                startDate = new Date(trimStartDate)
-                endDate = new Date(trimEndDate)
-                if (trimStartDate == -1) startDate = new Date(timeStartDate)
-                if (trimEndDate == -1) endDate = new Date(timeEndDate)
-
-            } else {
-                startDate = new Date(timeStartDate)
-                endDate = new Date(timeEndDate)
-            }
             if (item.date >= startDate && item.date <= endDate && item.location.length > 0) {
                 item.location.forEach(function(location) {
                     heatMapMarkers.push({
                         marker: L.circle(location, {}),
                         date: item.date,
                         reliability: item.reliability
-                    })
-                    var dataLocString = coordinateTupleToString(location)
+                    });
+                    //calculate the number of items at one location because heatmap neads intensity
+                    var dataLocString = coordinateTupleToString(location);
                     if (dataLocString in dataLocationDict) {
                         dataLocationDict[dataLocString] += 1
-                        maxDataLocationCount = Math.max(maxDataLocationCount, dataLocationDict[dataLocString])
+                        maxDataLocationCount = Math.max(maxDataLocationCount, dataLocationDict[dataLocString]);
                     } else {
-                        dataLocationDict[dataLocString] = 1
+                        dataLocationDict[dataLocString] = 1;
                     }
                 })
             }
         })
-
         for (dataLocString in dataLocationDict){
-            var dataLocationTuple = stringToCoordinateTuple(dataLocString)
-            heatmapLocationData.push([dataLocationTuple[0], dataLocationTuple[1], dataLocationDict[dataLocString]/maxDataLocationCount])
+            var dataLocationTuple = stringToCoordinateTuple(dataLocString);
+            heatmapLocationData.push([dataLocationTuple[0], dataLocationTuple[1], dataLocationDict[dataLocString]/maxDataLocationCount]);
         }
-        // https://github.com/Leaflet/Leaflet.heat
         var heat = L.heatLayer(heatmapLocationData, {
             radius: 10,
             minOpacity: 0.35,
@@ -250,56 +275,48 @@ function geoMapHandler(mapConfig, trimmingBool=true) {
             blur: 7,
             max: 1,
             gradient: {0.1: "yellow", 0.3: 'red', 0.6: 'lime', 0.9: 'blue'},
-        })
+        }) // https://github.com/Leaflet/Leaflet.heat
         heatMap.addLayer(heat)
         map.addLayer(heatMap)
     } else {
+        //if the pointers are selected
         data.forEach(function(item){
-            var startDate;
-            var endDate;
-            if(trimmingBool){
-                startDate = new Date(trimStartDate)
-                endDate = new Date(trimEndDate)
-                if (trimStartDate == -1) startDate = new Date(timeStartDate)
-                if (trimEndDate == -1) endDate = new Date(timeEndDate)
-
-            } else {
-                startDate = new Date(timeStartDate)
-                endDate = new Date(timeEndDate)
-            }
-
             if (item.date >= startDate && item.date <= endDate && item.location.length > 0) {
                 item.location.forEach(function(location) {
-                    // https://github.com/rowanwins/Leaflet.SvgShapeMarkers
-                    var circle = L.shapeMarker(location, {
-                        shape: item.reliability == "official" ? "circle" : "triangle",
+                    var circle = L.shapeMarker(location, {  // https://github.com/rowanwins/Leaflet.SvgShapeMarkers
+                        shape: item.reliability == "official" ? "circle" : "diamond", //select shape accordingly
                         color: colorrange[entityKeys.indexOf(item.key)],
                         fill: colorrange[entityKeys.indexOf(item.key)],
-                        radius: 0.5
+                        radius: giveRadiusForMarkersZoom()
                     }).bindPopup("Date: "+item.date.toISOString().split('T')[0]+"<br>Entity: "+item.key+"<br>Confidence: "+item.confidence);
                     markers.addLayer(circle);
                     markersArray.push({
                         marker: circle,
                         date: item.date,
                         key: item.key,
-                        reliability: item.reliability
+                        reliability: item.reliability //reliability = official/unoffical
                     })
                 })
             }
         })
         map.addLayer(markers);
     }
-
-    lassoResetHandler()
+    
+    lassoResetHandler();
 }
 
+
+/**
+ * @param  {data} array
+ * @param  {dataType} string
+ */
 function processData(data, dataType) {
     var species_host = [],
-            diseases = [],
-            symptoms = []
-            dates = [],
-            dataDateDict ={}, 
-            keys = [];
+        diseases = [],
+        symptoms = []
+        dates = [],
+        dataDateDict ={}, 
+        keys = [];
     
     data.map(function(d) {
             species_host = species_host.concat(d.species.split(','));
@@ -308,15 +325,15 @@ function processData(data, dataType) {
             dates.push(d.publication_date);
     });
 
-    appendEntities("#entity-species", species_host, 'species_')
-    appendEntities("#entity-diseases", diseases, 'diseases_')
-    appendEntities("#entity-symptoms", symptoms, 'symptoms_')
+    appendEntities("#entity-species", species_host, 'species_');
+    appendEntities("#entity-diseases", diseases, 'diseases_');
+    appendEntities("#entity-symptoms", symptoms, 'symptoms_');
 
     // default selection
     $('input[id^="disease"]').attr('checked', true);
 
-    dates = _.uniq(dates)
-    keys = []
+    dates = _.uniq(dates);
+    keys = [];
     var noEntitySelected = false;
     //check if no entity selected => select all
     if (($('input[id^="'+dataType+'"]:checked')).length === 0) {noEntitySelected = true;}
@@ -334,10 +351,11 @@ function processData(data, dataType) {
         }
     })
 
+    //calculate the active keys
     objList =  $('input[id^="'+dataType+'"]')    
     for (var i = objList.length - 1; i >= 0; i--) {
         if($(objList[i]).is(":checked")){
-            keys.push(objList[i].name.split(""+dataType+"_")[1])
+            keys.push(objList[i].name.split(""+dataType+"_")[1]);
         }
     }
         
@@ -349,7 +367,7 @@ function processData(data, dataType) {
         
         //helper function for getDates()
         Date.prototype.addDays = function(days) {
-            var dat = new Date(this.valueOf())
+            var dat = new Date(this.valueOf());
             dat.setDate(dat.getDate() + days);
             return dat;
         }
@@ -358,10 +376,10 @@ function processData(data, dataType) {
         function getDates(startDate, stopDate) {
             var localDateArray = new Array();
             var currentDate = startDate;
-            localDateArray.push((new Date (currentDate)).toISOString().split('T')[0])
+            localDateArray.push((new Date (currentDate)).toISOString().split('T')[0]);
             while (currentDate <= stopDate) {
                 currentDate = currentDate.addDays(1);
-                localDateArray.push((new Date (currentDate)).toISOString().split('T')[0])
+                localDateArray.push((new Date (currentDate)).toISOString().split('T')[0]);
             }
             return localDateArray;
         }
@@ -373,20 +391,19 @@ function processData(data, dataType) {
         // to get a value that is either negative, positive, or zero.
             return new Date(a) - new Date(b);
         };
-
-        dates.sort(dateSorter)
+        dates.sort(dateSorter);
     }
 
-    timeStartDate = dates[0]
-    timeEndDate = dates[dates.length - 1]
+    timeStartDate = dates[0];
+    timeEndDate = dates[dates.length - 1];
 
     dates.forEach(function(date) {
-        dataDateDict[date] = {}
+        dataDateDict[date] = {};
         keys.forEach(function(key) {
             //default each value to zero
-            dataDateDict[date][key] = {}
-            dataDateDict[date][key]["value"] = 0
-            dataDateDict[date][key]["location"] = []
+            dataDateDict[date][key] = {};
+            dataDateDict[date][key]["value"] = 0;
+            dataDateDict[date][key]["location"] = [];
         })
     })
 
@@ -394,15 +411,15 @@ function processData(data, dataType) {
         d[dataType].split(',').forEach(function(key) {
             if (keys.indexOf(key) > -1) {
                 //fill in the value
-                dataDateDict[d.publication_date][key]["value"] += 1
-                dataDateDict[d.publication_date][key]["location"].push([d.latitude, d.longitude])
-                dataDateDict[d.publication_date][key]["confidence"] = d.confidence
-                dataDateDict[d.publication_date][key]["reliability"] = d.rss_feed_reliability
+                dataDateDict[d.publication_date][key]["value"] += 1;
+                dataDateDict[d.publication_date][key]["location"].push([d.latitude, d.longitude]);
+                dataDateDict[d.publication_date][key]["confidence"] = d.confidence;
+                dataDateDict[d.publication_date][key]["reliability"] = d.rss_feed_reliability;
             }
-        })
+        });
     })
 
-    dataList = []
+    dataList = [];
     //add data in a sequence of dates
     for (date in dataDateDict) {
         for (key in dataDateDict[date]){
@@ -413,24 +430,39 @@ function processData(data, dataType) {
                 "location": dataDateDict[date][key]["location"],
                 "confidence": dataDateDict[date][key]["confidence"],
                 "reliability": dataDateDict[date][key]["reliability"]
-            }
-            dataList.push(tuple)
+            };
+            dataList.push(tuple);
         }
     } 
-    return [dataList, keys, dataDateDict, dates]
+    return [dataList, keys, dataDateDict, dates];
 }
 
+
+/**
+ * @param  {list} coordinate 2D array for a location coordinate
+ * @return {string} string representation of coordinate to be used as a key
+ */
 function coordinateTupleToString(coordiante){
-    return ""+coordiante[0]+"_"+coordiante[1]
+    return ""+coordiante[0]+"_"+coordiante[1];
 }
 
+
+/**
+ * @param  {string} str string representation of coordinate used as a key
+ * @return {list} 2D array for a location coordinate
+ */
 function stringToCoordinateTuple(str){
-    var tup = str.split("_")
-    return [parseFloat(tup[0]), parseFloat(tup[1])]
+    var tup = str.split("_");
+    return [parseFloat(tup[0]), parseFloat(tup[1])];
 }
 
 
-//helper function to append entities into the left-pane
+/**
+ * @param  {string} containerID ID for the container where to append the items
+ * @param  {list} list of items to append
+ * @param  {string} what ID to prepend to the items
+ * helper function to append entities into the left-pane
+ */
 function appendEntities(containerID, objList, idText) {
     if(!($(containerID).find('input').length > 0)) {
         _.uniq(objList).forEach(function(item) {
@@ -455,6 +487,11 @@ function appendEntities(containerID, objList, idText) {
     }
 }
 
+
+/**
+ * @param  {object} config object for the timeline drawing
+ * Handles the drawing of the flowcharts
+ */
 function drawTimeline(config) {
     var margin = config.margin;
     width = config.width;
@@ -464,8 +501,9 @@ function drawTimeline(config) {
     var divID = config.divID;
     var datearray = [];
 
-    strokecolor = "#aaa";
+    strokecolor = "#aaa"; //stroke color for the flows
 
+    //tooltips when hover over the flows
     var tooltip1 = d3.select("body")
         .append("div")
         .attr("class", "remove tooltips")
@@ -531,7 +569,6 @@ function drawTimeline(config) {
         .attr("d", function(d) { return area(d.values); })
         .style("fill", function(d, i) { return z(i); });
 
-
     svg.append("g")
         .attr("class", "x-axis")
         .attr("transform", "translate(0," + height + ")")
@@ -550,6 +587,7 @@ function drawTimeline(config) {
     });
 
     var streamValue1 = 0, streamValue2 = 0;
+    //vertical line to see data on the dates
     var verticalHover = d3.select(divID1+" svg").append("line")
         .attr("class", "verticalHover")
         .attr("x1", 0)
@@ -582,13 +620,14 @@ function drawTimeline(config) {
             d3.selectAll(".chart").selectAll(".layer").transition()
             .duration(250)
             .attr("opacity", function(d, j) {
-                return j != i ? 0.25 : 1;
+                return j != i ? 0.25 : 1; //fade the non-hovered flows
             })
         })
         .on("mousemove", function(d, i) {
             mouse = d3.mouse(this);
             mousex = mouse[0],
             mousey = mouse[1];
+            //calculate the nearest mouse date to the mouse and show verticcal hver there
             var mouseDate = x.invert(d3.mouse(this)[0]).toISOString().split('T')[0];
             var nearestMouseDate = giveNearestDate(mouseDate, config.dates)
 
@@ -635,6 +674,7 @@ function drawTimeline(config) {
             d3.selectAll(".verticalHover").attr("opacity", "0");
         })
 
+    //drag white rectanges fade the timeline when trimming
     var dragWhiteRect1 = d3.select(divID+" svg").append("rect")
           .attr("x", 0)
           .attr("y", margin.top)
@@ -653,6 +693,7 @@ function drawTimeline(config) {
           .attr("fill", "white")
           .attr("class", "drag-white-rect dragWhiteRectEnd")
 
+    //handles start trimmer
     var drag1 = d3.behavior.drag()
            .on('dragstart', null)
            .on('drag', function(d){
@@ -675,11 +716,12 @@ function drawTimeline(config) {
                 if (parseFloat(verticalDateEnd.attr("x1")) - parseFloat(verticalDateStart.attr("x1")) < 0.9*width) {
                     var newArrowX = (parseFloat(verticalDateStart.attr("x1")) + parseFloat(verticalDateEnd.attr("x1")))/2
                     d3.selectAll(".dragArrow").attr("visibility", "visibile").attr("x1", newArrowX-20).attr("x2", newArrowX+20)
-                    d3.selectAll(".verticalHover").attr("visibility", "visible")
-                    d3.selectAll(".tooltips").style("display", "block")
                 }
+                d3.selectAll(".verticalHover").attr("visibility", "visible")
+                d3.selectAll(".tooltips").style("display", "block")
              }); 
-               
+    
+    //handles end trimmer
     var drag2 = d3.behavior.drag()
        .on('dragstart', null)
        .on('drag', function(d){
@@ -703,11 +745,12 @@ function drawTimeline(config) {
             if (parseFloat(verticalDateEnd.attr("x1")) - parseFloat(verticalDateStart.attr("x1")) < 0.9*width) {
                 var newArrowX = (parseFloat(verticalDateStart.attr("x1")) + parseFloat(verticalDateEnd.attr("x1")))/2
                 d3.selectAll(".dragArrow").attr("visibility", "visibile").attr("x1", newArrowX-20).attr("x2", newArrowX+20)
-                d3.selectAll(".verticalHover").attr("visibility", "visible")
-                d3.selectAll(".tooltips").style("display", "block")
             }
+            d3.selectAll(".verticalHover").attr("visibility", "visible")
+            d3.selectAll(".tooltips").style("display", "block")
          });
 
+    //handler drag arrow
     var drag3 = d3.behavior.drag()
         .on('dragstart', null)
         .on('drag', function(d){
@@ -745,7 +788,7 @@ function drawTimeline(config) {
             .attr("x2", 2)
             .attr("y2", config.height)
             .style("stroke-width", 4)
-            .style("stroke", "black")
+            .style("stroke", "#888")
             .style("fill", "none")
             .call(drag1);
 
@@ -756,10 +799,11 @@ function drawTimeline(config) {
             .attr("x2", width-2)
             .attr("y2", config.height)
             .style("stroke-width", 4)
-            .style("stroke", "black")
+            .style("stroke", "#888")
             .style("fill", "none")
             .call(drag2);
 
+    //make the arrow heads for the drag arrow
     d3.select(divID+" svg").append("marker")
         .attr({
             "id":"arrow-head",
@@ -833,9 +877,14 @@ function drawTimeline(config) {
             if(!triggered){$("#zoom-out-1").trigger('click', true);}
         });
     }
-    d3.select("#color-scheme").on("change", function() { colorSchemeHandler(config); });
+    // d3.select("#color-scheme").on("change", function() { colorSchemeHandler(config); });
 }
 
+
+/**
+ * @param  {object} config object for timeline
+ * Handles zooming in on timeline
+ */
 function zoomInHandler(config){
     if (config.width * 1.2 > chartBoxWidth * 5) {
         config.width = config.width;
@@ -849,6 +898,11 @@ function zoomInHandler(config){
     $(divID1).scrollLeft($(divID1).offset().left + $(divID1).width() / 2)
 }
 
+
+/**
+ * @param  {object} config object for timeline
+ * Handles zooming out on timeline
+ */
 function zoomOutHandler(config){
     if (config.width / 1.2 < chartBoxWidth) {
         config.width = chartBoxWidth;
@@ -862,11 +916,19 @@ function zoomOutHandler(config){
     $(divID1).scrollLeft($(divID1).offset().left + $(divID1).width() / 2)
 }
 
-function colorSchemeHandler(config){
-    config.color = d3.select("#color-scheme").node().value;
-    drawTimeline(config);
-}
+// /**
+//  * @param  {object} config object for timeline
+//  * Handles change in color scheme for flows
+//  */
+// function colorSchemeHandler(config){
+//     config.color = d3.select("#color-scheme").node().value;
+//     drawTimeline(config);
+// }
 
+
+/**
+ * Handles events post completion of lasso selection
+ */
 function lassoHandler(){
     // or check if a point is inside the selected path
     var items = []
@@ -886,6 +948,9 @@ function lassoHandler(){
     lassoTimelineHighlight(items)
 }
 
+/**
+ * Handles disabling/enabling of lasso
+ */
 function lassoEnableHandler(){
     if ($("#lasso-enable a")[0].text == "Enable") {
         lasso.mode(FreeDraw.CREATE + FreeDraw.EDIT);
@@ -899,11 +964,15 @@ function lassoEnableHandler(){
     }
 }
 
+
+/**
+ * Handles resetting lasso
+ */
 function lassoResetHandler() {
     lasso.clear();
     lassoPolygon = null;
     d3.selectAll(".chart svg").selectAll(".date-lasso-line").remove()
-    map.setView([35, 10], 1)
+    // map.setView([35, 10], 1)
 
     if ($("#lasso-enable a")[0].text == "Disable") {
         lasso.mode(FreeDraw.CREATE + FreeDraw.EDIT);
@@ -912,6 +981,10 @@ function lassoResetHandler() {
     }
 }
 
+/**
+ * @param  {list} items markers/heatmap items inside the lasso
+ * Highlights dates correspoding to lasso selection on timeline
+ */
 function lassoTimelineHighlight(items){
     d3.selectAll(".chart svg").selectAll(".date-lasso-line").remove()
     var svg1 = d3.select(divID1+" svg");
@@ -949,6 +1022,11 @@ function lassoTimelineHighlight(items){
     })
 }
 
+/**
+ * @param  {date} mouseDate the date to which the nearest date is to found in an array
+ * @param  {list} datesArr the array used for finding nearesrt date
+ * gives the nearesr date in the array
+ */
 function giveNearestDate(mouseDate, datesArr){
     var minDateDiff = new Date(datesArr[0]);
     datesArr.forEach(function (item) {
@@ -959,6 +1037,10 @@ function giveNearestDate(mouseDate, datesArr){
     return minDateDiff;
 }
 
+
+/**
+ * Handles the size of markers when zooming in/out on the map
+ */
 function mapZoomHandler() {
     markersArray.forEach(function(item) {
         item.marker.setRadius(giveRadiusForMarkersZoom())
@@ -966,19 +1048,11 @@ function mapZoomHandler() {
     })
 }
 
-function heatMapHandler(item) {
-    heatMapEnableBool = !heatMapEnableBool;    
-    plotter();
-    lasso.clear();
-    lassoPolygon = null;
-    d3.select(divID1+' svg').selectAll('.date-lasso-line').remove();
-    if(heatMapEnableBool){
-        d3.select(item).html("See Points")
-    } else {
-        d3.select(item).html("See HeatMap")
-    }
-}
 
+/**
+ * @return {int} radiusMultiplier
+ * Returns the multiplier for size of markers on zomming in/out
+ */
 function giveRadiusForMarkersZoom(){
     var currentZoom = map.getZoom();
     var radiusMultiplier;
@@ -995,6 +1069,31 @@ function giveRadiusForMarkersZoom(){
     return radiusMultiplier;
 }
 
+
+/**
+ * @param  {object} item jquery item
+ * Handles enabling/disabling of heatmaps
+ */
+function heatMapHandler(item) {
+    heatMapEnableBool = !heatMapEnableBool;    
+    plotter();
+    lasso.clear();
+    lassoPolygon = null;
+    d3.select(divID1+' svg').selectAll('.date-lasso-line').remove();
+    if(heatMapEnableBool){
+        d3.select(item).html("See Points")
+    } else {
+        d3.select(item).html("See HeatMap")
+    }
+}
+
+
+/**
+ * @param  {int} timelineNo the number of timeline which is collapsed
+ * @param  {object} element jquery element
+ * @param  {object} mapConfig config object for the geo map
+ * Handles the collapsing of either of the timelines
+ */
 function handleTimelineCollapse(timelineNo, element, mapConfig){
     $("#timeline-"+timelineNo).slideToggle("slow");
     if ($(element).html().split(" ")[0] == "Collapse"){

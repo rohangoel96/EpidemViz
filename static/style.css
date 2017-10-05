@@ -85,7 +85,7 @@ legend{
 #zoom-container-1{
     position: relative;
     float: right;
-    top: -25px;
+    top: -20px;
     z-index: 2;
 }
 
@@ -97,7 +97,7 @@ legend{
 #zoom-container-2{
     position: relative;
     float: right;
-    top: -30px;
+    top: -20px;
     z-index: 2;
 }
 
@@ -109,9 +109,9 @@ legend{
 }
 
 #map{
-	height: 300px;
+	height: 250px;
 	width: 100%;
-	margin-bottom: 25px;
+	margin-bottom: 15px;
 }
 
 .date-select-line{
@@ -163,4 +163,73 @@ legend{
     position: fixed;
     top: 275px;
     left: 50px;
+}
+
+.panel-group, .panel-body, .panel-collapse{
+	max-height: 145px;
+}
+
+.panel-title{
+	font-size: 12px;
+	position: relative;
+	top: -4px;
+}
+
+.panel-heading{
+	height: 25px;
+}
+
+.navbar .container {
+    background-color:#5FA2DD;
+    background: #5FA2DD;
+    margin: 0;
+    width: 100%;
+    border-color: white
+}
+
+.navbar{
+	border-color: white;
+}
+
+.navbar-brand{
+	color: white !important
+}
+
+#left-pane{
+	margin-bottom: -99999px;
+	padding-bottom: 99999px;
+}
+
+#toolbar{
+	width: 50px;
+	margin: 0;
+	padding: 0;
+	position: fixed;
+	background: #5FA2DD;
+	padding: 50px 0;
+	left: 0;
+}
+
+.icon-bar .icon-svg {
+    display: block;
+    text-align: center;
+    padding: 10px 4px;
+    transition: all 0.3s ease;
+    color: white;
+    font-size: 30px;
+    text-decoration: none;
+}
+
+.icon-bar .icon-svg:hover {
+    background-color: #000;
+    text-decoration: none;
+}
+
+.icon-bar .active {
+    background-color: #0479e0;
+}
+
+.left-pane-element legend{
+	padding-bottom: 5px;
+	border-bottom: 1px solid rgb(203, 200, 200);
 }

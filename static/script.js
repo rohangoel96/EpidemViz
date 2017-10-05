@@ -25,7 +25,7 @@ var lasso = new FreeDraw({
     leaveModeAfterCreate: true
 }); //https://github.com/Wildhoney/Leaflet.FreeDraw
 var lassoPolygon= null; //the lasso selection polygon
-var collapseTimelineNumber = 0; //number of timelines which are collapsed at the moment
+// var collapseTimelineNumber = 0; //number of timelines which are collapsed at the moment
 
 
 /*
@@ -84,10 +84,11 @@ function plotter() {
             var combinedData = officialData.concat(unofficialData); //combined official and unofficial data
             var processedCombinedData = processData(combinedData, dataType);
 
-            entityKeys = processedCombinedData[1]; //entity values should be decided from the combined data
-            colorrange = generateDistinctColors(entityKeys.length); //colors for each of the entity
+            entityKeys = processedCombinedData[4]; //entity values should be decided from the combined data
+            // colorrange = generateDistinctColors(entityKeys.length);
+            colorrange = colores_google(entityKeys.length); //colors for each of the entity
 
-            chartBoxWidth = $("#timeline-1").width() - margin.left - margin.right;
+            chartBoxWidth = $(".panel-group").width() - margin.left - margin.right - 40;
 
             //configuration object for the geographical map
             var mapConfig = {
@@ -154,34 +155,34 @@ function plotter() {
                 geoMapHandler(mapConfig); //update map
             });
 
-            //handle collapsing of both timelines
-            d3.select("#collapse-time-1").on("click", function() {
-                handleTimelineCollapse(1, $("#collapse-time-1"), mapConfig);
-                })
-            d3.select("#collapse-time-2").on("click", function() {
-                handleTimelineCollapse(2, $("#collapse-time-2"), mapConfig);
-            })
+            // //handle collapsing of both timelines
+            // d3.select("#collapse-time-1").on("click", function() {
+            //     handleTimelineCollapse(1, $("#collapse-time-1"), mapConfig);
+            //     })
+            // d3.select("#collapse-time-2").on("click", function() {
+            //     handleTimelineCollapse(2, $("#collapse-time-2"), mapConfig);
+            // })
 
             //handle collapsing of the left pane
-            d3.select("#collapse-left p").on("click", function() {
-                if ($("#collapse-left p").html() == "Collapse") {
-                    $("#left-pane").css("display", "none");
-                    $("#collapse-left p").html("Expand");
-                    $("#right-pane").css("width", "1175px");
-                    timeline1Config.width = $("#timeline-1").width() - margin.left - margin.right;
-                    timeline2Config.width = $("#timeline-1").width() - margin.left - margin.right;
-                    drawTimeline(timeline1Config);
-                    drawTimeline(timeline2Config);
-                } else {
-                    $("#left-pane").css("display", "block");
-                    $("#collapse-left p").html("Collapse");
-                    $("#right-pane").css("width", "975px");
-                    timeline1Config.width = $("#timeline-1").width() - margin.left - margin.right;
-                    timeline2Config.width = $("#timeline-1").width() - margin.left - margin.right;
-                    drawTimeline(timeline1Config);
-                    drawTimeline(timeline2Config);
-                }
-            })
+            // d3.select("#collapse-left p").on("click", function() {
+            //     if ($("#collapse-left p").html() == "Collapse") {
+            //         $("#left-pane").css("display", "none");
+            //         $("#collapse-left p").html("Expand");
+            //         $("#right-pane").css("width", "1175px");
+            //         timeline1Config.width = $("#timeline-1").width() - margin.left - margin.right;
+            //         timeline2Config.width = $("#timeline-1").width() - margin.left - margin.right;
+            //         drawTimeline(timeline1Config);
+            //         drawTimeline(timeline2Config);
+            //     } else {
+            //         $("#left-pane").css("display", "block");
+            //         $("#collapse-left p").html("Collapse");
+            //         $("#right-pane").css("width", "975px");
+            //         timeline1Config.width = $("#timeline-1").width() - margin.left - margin.right;
+            //         timeline2Config.width = $("#timeline-1").width() - margin.left - margin.right;
+            //         drawTimeline(timeline1Config);
+            //         drawTimeline(timeline2Config);
+            //     }
+            // })
 
             //update colors for entities in the left pane
             $(".enties-label").css("color", "black")
@@ -316,7 +317,8 @@ function processData(data, dataType) {
         symptoms = []
         dates = [],
         dataDateDict ={}, 
-        keys = [];
+        activeKeys = [],
+        allKeys = [];
     
     data.map(function(d) {
             species_host = species_host.concat(d.species.split(','));
@@ -333,7 +335,7 @@ function processData(data, dataType) {
     $('input[id^="disease"]').attr('checked', true);
 
     dates = _.uniq(dates);
-    keys = [];
+    activeKeys = [];
     var noEntitySelected = false;
     //check if no entity selected => select all
     if (($('input[id^="'+dataType+'"]:checked')).length === 0) {noEntitySelected = true;}
@@ -351,12 +353,13 @@ function processData(data, dataType) {
         }
     })
 
-    //calculate the active keys
+    //calculate the active activeKeys
     objList =  $('input[id^="'+dataType+'"]')    
     for (var i = objList.length - 1; i >= 0; i--) {
         if($(objList[i]).is(":checked")){
-            keys.push(objList[i].name.split(""+dataType+"_")[1]);
+            activeKeys.push(objList[i].name.split(""+dataType+"_")[1]);
         }
+        allKeys.push(objList[i].name.split(""+dataType+"_")[1])
     }
         
     if (fillInMissingDates){
@@ -399,7 +402,7 @@ function processData(data, dataType) {
 
     dates.forEach(function(date) {
         dataDateDict[date] = {};
-        keys.forEach(function(key) {
+        activeKeys.forEach(function(key) {
             //default each value to zero
             dataDateDict[date][key] = {};
             dataDateDict[date][key]["value"] = 0;
@@ -409,7 +412,7 @@ function processData(data, dataType) {
 
     data.map(function(d) {
         d[dataType].split(',').forEach(function(key) {
-            if (keys.indexOf(key) > -1) {
+            if (activeKeys.indexOf(key) > -1) {
                 //fill in the value
                 dataDateDict[d.publication_date][key]["value"] += 1;
                 dataDateDict[d.publication_date][key]["location"].push([d.latitude, d.longitude]);
@@ -434,7 +437,7 @@ function processData(data, dataType) {
             dataList.push(tuple);
         }
     } 
-    return [dataList, keys, dataDateDict, dates];
+    return [dataList, activeKeys, dataDateDict, dates, allKeys];
 }
 
 
@@ -467,7 +470,7 @@ function appendEntities(containerID, objList, idText) {
     if(!($(containerID).find('input').length > 0)) {
         _.uniq(objList).forEach(function(item) {
                 $(containerID).append(
-                        $(document.createElement('label')).text(item)
+                        $(document.createElement('label')).text(trimEntitiesToFitOnScreen(item))
                         .attr({
                             class: "enties-label",
                             id: "label_"+idText + item
@@ -525,9 +528,6 @@ function drawTimeline(config) {
     var y = d3.scale.linear()
             .range([height-10, 0]);
 
-    var z = d3.scale.ordinal()
-            .range(colorrange);
-
     var xAxis = d3.svg.axis()
             .scale(x)
             .orient("bottom")
@@ -567,7 +567,7 @@ function drawTimeline(config) {
         .enter().append("path")
         .attr("class", "layer")
         .attr("d", function(d) { return area(d.values); })
-        .style("fill", function(d, i) { return z(i); });
+        .style("fill", function(d, i) {return colorrange[entityKeys.indexOf(d.key)]; });
 
     svg.append("g")
         .attr("class", "x-axis")
@@ -952,16 +952,15 @@ function lassoHandler(){
  * Handles disabling/enabling of lasso
  */
 function lassoEnableHandler(){
-    if ($("#lasso-enable a")[0].text == "Enable") {
-        lasso.mode(FreeDraw.CREATE + FreeDraw.EDIT);
-        $("#lasso-enable a")[0].text = "Disable"
-    } else {
+    if ($("#icon-lasso").hasClass("active")) {
         lasso.mode(FreeDraw.NONE);
         lasso.clear();
         lassoPolygon = null;
-        d3.selectAll(".chart svg").selectAll(".date-lasso-line").remove()
-        $("#lasso-enable a")[0].text = "Enable"
+        d3.selectAll(".chart svg").selectAll(".date-lasso-line").remove();
+    } else {
+        lasso.mode(FreeDraw.CREATE + FreeDraw.EDIT);
     }
+    $("#icon-lasso").toggleClass("active");
 }
 
 
@@ -974,7 +973,7 @@ function lassoResetHandler() {
     d3.selectAll(".chart svg").selectAll(".date-lasso-line").remove()
     // map.setView([35, 10], 1)
 
-    if ($("#lasso-enable a")[0].text == "Disable") {
+    if ($("#icon-lasso").hasClass("active")) {
         lasso.mode(FreeDraw.CREATE + FreeDraw.EDIT);
     } else {
         lasso.mode(FreeDraw.NONE);
@@ -1074,19 +1073,29 @@ function giveRadiusForMarkersZoom(){
  * @param  {object} item jquery item
  * Handles enabling/disabling of heatmaps
  */
-function heatMapHandler(item) {
-    heatMapEnableBool = !heatMapEnableBool;    
+function heatMapHandler(bool) {
+    heatMapEnableBool = bool;
+    if (heatMapEnableBool) {
+        $("#icon-points").removeClass("active");
+        $("#icon-heatmap").addClass("active");
+    } else {
+        $("#icon-points").addClass("active");
+        $("#icon-heatmap").removeClass("active");
+    } 
     plotter();
     lasso.clear();
     lassoPolygon = null;
     d3.select(divID1+' svg').selectAll('.date-lasso-line').remove();
-    if(heatMapEnableBool){
-        d3.select(item).html("See Points")
-    } else {
-        d3.select(item).html("See HeatMap")
-    }
 }
 
+function trimEntitiesToFitOnScreen(text) {
+    if (text.length > 20) {
+        return text.substr(0, 20)+'...';
+    }
+    else {
+        return text
+    }
+}
 
 /**
  * @param  {int} timelineNo the number of timeline which is collapsed
@@ -1094,28 +1103,28 @@ function heatMapHandler(item) {
  * @param  {object} mapConfig config object for the geo map
  * Handles the collapsing of either of the timelines
  */
-function handleTimelineCollapse(timelineNo, element, mapConfig){
-    $("#timeline-"+timelineNo).slideToggle("slow");
-    if ($(element).html().split(" ")[0] == "Collapse"){
-        if (timelineNo == 1) { $("#zoom-container-1").hide()}
-        else if (timelineNo == 2) { $("#zoom-container-2").hide()}
-        $(element).html("Expand T"+timelineNo)
-        collapseTimelineNumber += 1;
-    } else {
-        if (timelineNo == 1) { $("#zoom-container-1").show()}
-        else if (timelineNo == 2) { $("#zoom-container-2").show()}
-        $(element).html("Collapse T"+timelineNo)
-        collapseTimelineNumber -= 1;
-    }
+// function handleTimelineCollapse(timelineNo, element, mapConfig){
+//     $("#timeline-"+timelineNo).slideToggle("slow");
+//     if ($(element).html().split(" ")[0] == "Collapse"){
+//         if (timelineNo == 1) { $("#zoom-container-1").hide()}
+//         else if (timelineNo == 2) { $("#zoom-container-2").hide()}
+//         $(element).html("Expand T"+timelineNo)
+//         collapseTimelineNumber += 1;
+//     } else {
+//         if (timelineNo == 1) { $("#zoom-container-1").show()}
+//         else if (timelineNo == 2) { $("#zoom-container-2").show()}
+//         $(element).html("Collapse T"+timelineNo)
+//         collapseTimelineNumber -= 1;
+//     }
 
-    if(collapseTimelineNumber == 1){
-        $("#map").css("height", (300 + timelineHeight)+"px");
-        map.setView([35, 10], 2)
-    } else if (collapseTimelineNumber == 2){
-        $("#map").css("height", (300 + 2*timelineHeight)+"px");
-        map.setView([43, 15], 2)
-    } else {
-        $("#map").css("height", "300px");
-        map.setView([35, 10], 1)
-    }
-}
+//     if(collapseTimelineNumber == 1){
+//         $("#map").css("height", (300 + timelineHeight)+"px");
+//         map.setView([35, 10], 2)
+//     } else if (collapseTimelineNumber == 2){
+//         $("#map").css("height", (300 + 2*timelineHeight)+"px");
+//         map.setView([43, 15], 2)
+//     } else {
+//         $("#map").css("height", "300px");
+//         map.setView([35, 10], 1)
+//     }
+// }

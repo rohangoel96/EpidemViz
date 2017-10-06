@@ -283,26 +283,30 @@ function geoMapHandler(mapConfig, trimmingBool=true) {
         //if the pointers are selected
         data.forEach(function(item){
             if (item.date >= startDate && item.date <= endDate && item.location.length > 0) {
-                item.location.forEach(function(location) {
+                item.location.forEach(function(location, ind) {
+                    if (!(item.reliability[ind] == "official" || item.reliability[ind] == "unofficial")) {
+                        console.log("ERROR: RELIABILITY NOT FOUND", item.reliability[ind]);
+                        throw "RELIABILITY ERROR - DATASET FOUND WITH UNEXPECTED RELIABILITY"
+                    }
                     var circle = L.shapeMarker(location, {  // https://github.com/rowanwins/Leaflet.SvgShapeMarkers
-                        shape: item.reliability == "official" ? "circle" : "diamond", //select shape accordingly
+                        shape: item.reliability[ind] == "official" ? "circle" : "diamond", //select shape accordingly
                         color: colorrange[entityKeys.indexOf(item.key)],
                         fill: colorrange[entityKeys.indexOf(item.key)],
                         radius: giveRadiusForMarkersZoom()
-                    }).bindPopup("Date: "+item.date.toISOString().split('T')[0]+"<br>Entity: "+item.key+"<br>Confidence: "+item.confidence);
+                    }).bindPopup("Date: "+dateObjectToString(item.date)+"<br>Entity: "+item.key+"<br>Confidence: "+item.confidence[ind]);
                     markers.addLayer(circle);
                     markersArray.push({
                         marker: circle,
                         date: item.date,
                         key: item.key,
-                        reliability: item.reliability //reliability = official/unoffical
+                        reliability: item.reliability[ind]//reliability = official/unoffical
                     })
                 })
             }
         })
         map.addLayer(markers);
     }
-    
+
     lassoResetHandler();
 }
 
@@ -379,10 +383,10 @@ function processData(data, dataType) {
         function getDates(startDate, stopDate) {
             var localDateArray = new Array();
             var currentDate = startDate;
-            localDateArray.push((new Date (currentDate)).toISOString().split('T')[0]);
+            localDateArray.push(dateObjectToString(new Date (currentDate)));
             while (currentDate <= stopDate) {
                 currentDate = currentDate.addDays(1);
-                localDateArray.push((new Date (currentDate)).toISOString().split('T')[0]);
+                localDateArray.push(dateObjectToString(new Date (currentDate)));
             }
             return localDateArray;
         }
@@ -407,6 +411,8 @@ function processData(data, dataType) {
             dataDateDict[date][key] = {};
             dataDateDict[date][key]["value"] = 0;
             dataDateDict[date][key]["location"] = [];
+            dataDateDict[date][key]["confidence"] = [];
+            dataDateDict[date][key]["reliability"] = [];
         })
     })
 
@@ -416,8 +422,8 @@ function processData(data, dataType) {
                 //fill in the value
                 dataDateDict[d.publication_date][key]["value"] += 1;
                 dataDateDict[d.publication_date][key]["location"].push([d.latitude, d.longitude]);
-                dataDateDict[d.publication_date][key]["confidence"] = d.confidence;
-                dataDateDict[d.publication_date][key]["reliability"] = d.rss_feed_reliability;
+                dataDateDict[d.publication_date][key]["confidence"].push(d.confidence);
+                dataDateDict[d.publication_date][key]["reliability"].push(d.rss_feed_reliability);
             }
         });
     })
@@ -628,7 +634,7 @@ function drawTimeline(config) {
             mousex = mouse[0],
             mousey = mouse[1];
             //calculate the nearest mouse date to the mouse and show verticcal hver there
-            var mouseDate = x.invert(d3.mouse(this)[0]).toISOString().split('T')[0];
+            var mouseDate = dateObjectToString(x.invert(d3.mouse(this)[0]));
             var nearestMouseDate = giveNearestDate(mouseDate, config.dates)
 
             streamValue1 = 0, streamValue2 = 0;
@@ -709,7 +715,7 @@ function drawTimeline(config) {
                 d3.selectAll(".verticalHover").attr("visibility", "hidden")
                 d3.selectAll(".tooltips").style("display", "none")
              }).on('dragend', function(d){
-                var mouseDate = x.invert(parseFloat(d3.select(this).attr('x1'))).toISOString().split('T')[0];
+                var mouseDate = dateObjectToString(x.invert(parseFloat(d3.select(this).attr('x1'))));
                 trimStartDate = mouseDate;
                 geoMapHandler(config.mapConfig)
                 dragWhiteRect1.attr("opacity", 0.6)
@@ -738,7 +744,7 @@ function drawTimeline(config) {
             d3.selectAll(".verticalHover").attr("visibility", "hidden")
             d3.selectAll(".tooltips").style("display", "none")
          }).on('dragend', function(d) {
-            var mouseDate = x.invert(parseFloat(d3.select(this).attr('x1'))).toISOString().split('T')[0];
+            var mouseDate = dateObjectToString(x.invert(parseFloat(d3.select(this).attr('x1'))));
             trimEndDate = mouseDate;
             geoMapHandler(config.mapConfig);
             dragWhiteRect2.attr("opacity", 0.6)
@@ -773,8 +779,8 @@ function drawTimeline(config) {
         }).on('dragend', function(d) {
             d3.selectAll(".dragWhiteRectStart").attr("opacity", 0.6)
             d3.selectAll(".dragWhiteRectEnd").attr("opacity", 0.6)
-            trimStartDate = x.invert(parseFloat(verticalDateStart.attr('x1'))).toISOString().split('T')[0];
-            trimEndDate = x.invert(parseFloat(verticalDateEnd.attr('x1'))).toISOString().split('T')[0];
+            trimStartDate = dateObjectToString(x.invert(parseFloat(verticalDateStart.attr('x1'))));
+            trimEndDate = dateObjectToString(x.invert(parseFloat(verticalDateEnd.attr('x1'))));
             d3.selectAll(".verticalHover").attr("visibility", "visible")
             d3.selectAll(".tooltips").style("display", "block")
             geoMapHandler(config.mapConfig);
@@ -1088,13 +1094,35 @@ function heatMapHandler(bool) {
     d3.select(divID1+' svg').selectAll('.date-lasso-line').remove();
 }
 
+/**
+ * Trims down the length of entity text on screen to fit in view
+ * @param  {string} text original text
+ * @return {string} trimmed down text
+ */
 function trimEntitiesToFitOnScreen(text) {
-    if (text.length > 20) {
-        return text.substr(0, 20)+'...';
+    if (text.length > 18) {
+        return text.substr(0, 16)+'...';
     }
     else {
         return text
     }
+}
+
+
+/**
+ * Converts date object to string YYYY-MM-DD
+ * @param  {object} date date in object
+ * @return {[type]} date in YYYY-MM-DD string
+ */
+function dateObjectToString(date) {
+  var yyyy = date.getFullYear().toString();
+  var mm = (date.getMonth()+1).toString();
+  var dd  = date.getDate().toString();
+
+  var mmChars = mm.split('');
+  var ddChars = dd.split('');
+
+  return yyyy + '-' + (mmChars[1]?mm:"0"+mmChars[0]) + '-' + (ddChars[1]?dd:"0"+ddChars[0]);
 }
 
 /**

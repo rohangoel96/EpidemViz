@@ -13,8 +13,8 @@ html, body {
 }
 
 legend{
-	font-size: 16px;
-	margin-bottom: 15px;
+	font-size: 13px;
+	margin-bottom: 10px;
 }
 
 .navbar-nav{
@@ -26,12 +26,35 @@ legend{
 	width: 100%
 }
 
-#left-pane label input{
-	margin-right: 5px;
+#data-type {
+	margin-top: 15px;
 }
 
-.left-pane-element {
-	margin: 0 0 40px 0;
+#data-type label{
+	margin-bottom: 0;
+}
+
+#left-pane label input{
+	margin-right: 3px;
+	position: relative;
+    top: 2px;
+}
+
+#entities input{
+	position: relative;
+	top: -3px !important;
+}
+
+#entities-container{
+	padding-right: 0;
+}
+
+.left-pane-element-container{
+	padding-left: 0px;
+}
+
+.left-pane-element label{
+	font-size: 10px;
 }
 
 .entities-checkbox{
@@ -109,9 +132,17 @@ legend{
 }
 
 #map{
-	height: 250px;
+	height: 280px;
 	width: 100%;
-	margin-bottom: 15px;
+}
+
+#left-pane{
+	height: 280px;
+	margin-bottom: 10px;
+}
+
+#timelines-container{
+	padding: 0;
 }
 
 .date-select-line{
@@ -166,7 +197,7 @@ legend{
 }
 
 .panel-group, .panel-body, .panel-collapse{
-	max-height: 145px;
+	max-height: 130px;
 }
 
 .panel-title{
@@ -193,11 +224,6 @@ legend{
 
 .navbar-brand{
 	color: white !important
-}
-
-#left-pane{
-	margin-bottom: -99999px;
-	padding-bottom: 99999px;
 }
 
 #toolbar{
@@ -232,4 +258,21 @@ legend{
 .left-pane-element legend{
 	padding-bottom: 5px;
 	border-bottom: 1px solid rgb(203, 200, 200);
+}
+
+#right-pane{
+	padding-right: 0
+}
+
+.panel-group {
+    margin-bottom: 30px;
+}
+
+.popover-title{
+    font-size: 10px;
+    width: 90px;
+}
+
+.modal-content{
+	padding: 20px 40px;
 }

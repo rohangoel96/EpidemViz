@@ -60,6 +60,6 @@ def home():
 
 if __name__ == "__main__":
     app.debug = True
-    port = int(environ.get('PORT', 8000))
+    port = int(environ.get('PORT', 4444))
     app.run(host='0.0.0.0', port=port)
     app.run()

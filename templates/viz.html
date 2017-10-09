@@ -21,117 +21,111 @@
         </div>
     </nav>
     <div class="container" id="app-container">
-        <div class="row">
+        <div id="top-row" class="row">
             <div id="toolbar" class="icon-bar">
                 <a href="#" class="icon-svg" id="icon-lasso" onclick="lassoEnableHandler(this);"><i class="icon-lasoo2"></i></a> 
                 <a href="#" class="icon-svg" id="icon-reset" onclick="lassoResetHandler(this)"><i class="icon-reset"></i></a> 
                 <hr>
                 <a href="#" class="icon-svg active" id="icon-points" onclick="heatMapHandler(false)"><i class="icon-points"></i></a> 
                 <a href="#" class="icon-svg" id="icon-heatmap" onclick="heatMapHandler(true)"><i class="icon-heatmap"></i></a>
+                <a href="#" class="icon-svg" id="icon-slider"  rel="popover" data-content="
+                <input id='pop-over-slider' type='range' min='0' max='1' step='0.1' onchange='confidenceSlider(this.value)' value='0.2'>" data-html="true" data-original-title="Confidence Filter >= 0.2" data-placement="right"><i class="icon-slider"></i></a>
             </div>
-           <!--  <span id="collapse-left"><p>Collapse</p></span> -->
-            <div class="col-md-2 well well-md" id="left-pane">
-                <div class="left-pane-element" id="data-file">
-                    <fieldset>
-                        <legend>Map Data</legend>
-                        <label><input type="checkbox" id="map-data-official" class="data-file" name="data-file" value="official" checked>Official &nbsp;<i class="icon-circle" style="font-size: 10px;"></i></label>
-                        <label><input type="checkbox" id="map-data-unofficial" class="data-file" name="data-file" value="unofficial">Non-official &nbsp;<i class="icon-rhombus"></i></label>
-                    </fieldset>
+            <span class="col-md-1"></span>
+            <div class="col-md-3 well well-md" id="left-pane">
+                <div class="col-md-5 left-pane-element-container">
+                    <div class="left-pane-element" id="data-file">
+                        <fieldset>
+                            <legend>Map Data</legend>
+                            <label><input type="checkbox" id="map-data-official" class="data-file" name="data-file" value="official" checked>Official &nbsp;<i class="icon-circle" style="font-size: 7px;"></i></label>
+                            <label><input type="checkbox" id="map-data-unofficial" class="data-file" name="data-file" value="unofficial">Non-official &nbsp;<i class="icon-rhombus"></i></label>
+                        </fieldset>
+                    </div>
+                    <div class="left-pane-element" id="data-type">
+                        <fieldset>
+                            <legend>Data Type</legend>
+                            <label><input type="radio" value="diseases" onclick="plotter(this)" name="data-type" checked>Diseases</label>
+                            <label><input type="radio" value="species" onclick="plotter(this)" name="data-type">Hosts</label>
+                            <label><input type="radio" value="symptoms" onclick="plotter(this)" name="data-type">Symptoms</label>
+                        </fieldset>
+                    </div>
                 </div>
-                <div class="left-pane-element" id="data-type">
-                    <fieldset>
-                        <legend>Data Type</legend>
-                        <label><input type="radio" value="diseases" onclick="plotter(this)" name="data-type" checked>Diseases</label>
-                        <label><input type="radio" value="species" onclick="plotter(this)" name="data-type">Hosts</label>
-                        <label><input type="radio" value="symptoms" onclick="plotter(this)" name="data-type">Symptoms</label>
-                    </fieldset>
-                </div>
-                <div class="left-pane-element" id="entities">
-                    <fieldset>
-                        <legend>Entities</legend>
-                        <div id="entity-diseases" class="entity-container">
-                        </div>
-                        <div id="entity-species" class="entity-container">
-                        </div>
-                        <div id="entity-symptoms" class="entity-container">
-                        </div>
-                    </fieldset>
+                <div class="col-md-7 left-pane-element-container" id="entities-container">  
+                    <div class="left-pane-element" id="entities">
+                        <fieldset>
+                            <legend>Entities</legend>
+                            <div id="entity-diseases" class="entity-container">
+                            </div>
+                            <div id="entity-species" class="entity-container">
+                            </div>
+                            <div id="entity-symptoms" class="entity-container">
+                            </div>
+                        </fieldset>
+                    </div>
                 </div>
             </div>
-            <div class="col-md-10" id="right-pane">
-                <!-- <legend>Geographical Map</legend> -->
-<!--                         <span id="lasso-container">
-                            <span id="lasso-head">Lasso: </span>
-                            <span id="lasso-enable" class="lasso-controller"><a href="#" onclick="lassoEnableHandler(this);return false;">Enable</a></span>
-                            <span id="lasso-reset" class="lasso-controller"><a href="#" onclick="lassoResetHandler(this)">Reset</a></span>
-                        </span>
-                        <span id="heatmap-container">
-                            <span><a id="heatmap-control" href="#" onclick="heatMapHandler(this)">See HeatMap</a></span>
-                        </span> -->
-                <div id="map" class="map">
-                
-                </div>
-                <!-- <fieldset> -->
-                        <!-- <legend>Timeline</legend> -->
-    <!--                             <span>
-                            Color Scheme: 
-                            <select id="color-scheme" class="form-control">
-                                <option value="orange">Orange</option>
-                                <option value="blue">Blue</option>
-                                <option value="pink">Pink</option>
-                            </select>
-                        </span> -->
-                        <div class="panel-group">
-                            <div class="panel panel-default">
-                                <div class="panel-heading">
-                                    <p class="panel-title">
-                                        <a data-toggle="collapse" href="#collapse1" aria-expanded="true">Official Timeline</a>
-                                    </p>
-                                </div>
-                                <div id="collapse1" class="panel-collapse collapse in">
-                                    <div class="panel-body">
-                                        <span id="zoom-container-1" class="zoom-cont">
-                                        <span id="zoom-head-1">Zoom: </span>
-                                        <span id="zoom-in-1" class="zoom-controller"> +</span>
-                                        <span id="zoom-out-1" class="zoom-controller">-</span>
-                                        </span>
-                                        <div id="timeline-1" class="chart" aria-expanded="true">
-                                    </div>
-                                </div>
+            <div class="col-md-7" id="right-pane">
+                <div id="map" class="map"></div>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-md-1"></div>
+            <div class="col-md-10" id="timelines-container">
+                <div class="panel-group">
+                    <div class="panel panel-default">
+                        <div class="panel-heading">
+                            <p class="panel-title">
+                                <a data-toggle="collapse" href="#collapse1" aria-expanded="true">Official Timeline</a>
+                            </p>
+                        </div>
+                        <div id="collapse1" class="panel-collapse collapse in">
+                            <div class="panel-body">
+                                <span id="zoom-container-1" class="zoom-cont">
+                                    <span id="zoom-head-1">Zoom: </span>
+                                    <span id="zoom-in-1" class="zoom-controller"> +</span>
+                                    <span id="zoom-out-1" class="zoom-controller">-</span>
+                                </span>
+                                <div id="timeline-1" class="chart" aria-expanded="true"></div>
                             </div>
                         </div>
-                       
-                        <!-- <span id="collapse-time-1" class="collapseTimeline">Collapse T1</span> -->
-                        <!-- <div id="timeline-1" class="chart"> -->
+                    </div>
+                </div>  
+
+                <div class="panel-group">
+                    <div class="panel panel-default">
+                        <div class="panel-heading">
+                            <p class="panel-title">
+                                <a data-toggle="collapse" href="#collapse2" aria-expanded="true">Non-official Timeline</a>
+                            </p>
                         </div>
-                        <div class="panel-group">
-                            <div class="panel panel-default">
-                                <div class="panel-heading">
-                                    <p class="panel-title">
-                                        <a data-toggle="collapse" href="#collapse2" aria-expanded="true">Unofficial Timeline</a>
-                                    </p>
-                                </div>
-                                <div id="collapse2" class="panel-collapse collapse in">
-                                    <div class="panel-body">
-                                        <span id="zoom-container-2" class="zoom-cont">
-                                        <span id="zoom-head-2">Zoom: </span>
-                                        <span id="zoom-in-2" class="zoom-controller"> +</span>
-                                        <span id="zoom-out-2" class="zoom-controller">-</span>
-                                        </span>
-                                        <div id="timeline-2" class="chart" aria-expanded="true">
-                                    </div>
-                                </div>
+                        <div id="collapse2" class="panel-collapse collapse in">
+                            <div class="panel-body">
+                                <span id="zoom-container-2" class="zoom-cont">
+                                    <span id="zoom-head-2">Zoom: </span>
+                                    <span id="zoom-in-2" class="zoom-controller"> +</span>
+                                    <span id="zoom-out-2" class="zoom-controller">-</span>
+                                </span>
+                                <div id="timeline-2" class="chart" aria-expanded="true"></div>
                             </div>
-<!--                         <span id="collapse-time-2" class="collapseTimeline">Collapse T2</span>
-                        <div id="timeline-2" class="chart" style="margin-top: -25px">
-                        </div> -->
-                    <!-- </fieldset> -->
+                        </div>
+                    </div>
+                </div>
+
+            </div>            
+        </div>
+
+        <div class="modal fade bs-example-modal-lg" id="markerPopUpModal" tabindex="1" role="dialog" aria-labelledby="myLargeModalLabel">
+            <div class="modal-dialog modal-lg" role="document">
+                <div class="modal-content">
+                </div>
             </div>
         </div>
     </div>
 
+    <script type="text/javascript" src="static/util/slider.js"></script>
     <script type="text/javascript" src="static/util/lasso/leaflet-src.js"></script>
     <script type="text/javascript" src="static/util/lasso/leaflet-freedraw.web.js"></script>
+    <link rel="stylesheet" type="text/css" href="static/util/slider.css">
     <link rel="stylesheet" type="text/css" href="static/util/lasso/leaflet.css">
     <!-- http://mediatemple.net/blog/tips/creating-implementing-icon-font-tutorial/ -->
     <!-- https://www.flaticon.com/search -->

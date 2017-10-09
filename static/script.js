@@ -4,7 +4,7 @@ var timeParseFormat = d3.time.format("%Y-%m-%d"); //time format in csv files
 var timeDisplayFormat = d3.time.format("%d/%m/%y"); //time format to be displayed on screen
 var divID1 = "#timeline-1"; //id of the div containing timeline 1
 var divID2 = "#timeline-2"; //id of the div containing timeline 2
-var timelineHeight = 100; //height of timeline div
+var timelineHeight = 90; //height of timeline div
 
 var mapDataSelector = "OFFICIAL" //to decide data to be shown on map
 var chartBoxWidth = 0; //the width of timeline without stretch
@@ -26,36 +26,46 @@ var lasso = new FreeDraw({
 }); //https://github.com/Wildhoney/Leaflet.FreeDraw
 var lassoPolygon= null; //the lasso selection polygon
 // var collapseTimelineNumber = 0; //number of timelines which are collapsed at the moment
-
-
+var confidenceFilter = 0.2;
+var dsv = d3.dsv(";", "text/plain"); //seperator in CSV = ;
+var articleData;
 /*
     Do the following when the page loads for the first time
  */
 $(document).ready(function() {
-    plotter();
-    map = L.map('map').setView([35, 10], 1);
-    map.on('zoomend', mapZoomHandler)
+    dsv("/static/data/articles.csv", function(error, data) {
+        articleData = processedArticleData(data);
+        plotter();
+        map = L.map('map').setView([35, 10], 1);
+        map.on('zoomend', mapZoomHandler)
 
-    map.addLayer(lasso);
-    lasso.mode(FreeDraw.NONE)
-    lasso.on('markers', event => {
-        var lassoPointListofList = event.latLngs;
-        if(lassoPointListofList) {
-            var lassoPolygonList = [];
-            lassoPointListofList.forEach(function(polygonList) {
-                polygonList.forEach(function(latLng) {
-                    lassoPolygonList.push([latLng.lat, latLng.lng]);
+        map.addLayer(lasso);
+        lasso.mode(FreeDraw.NONE)
+        lasso.on('markers', event => {
+            var lassoPointListofList = event.latLngs;
+            if(lassoPointListofList) {
+                var lassoPolygonList = [];
+                lassoPointListofList.forEach(function(polygonList) {
+                    polygonList.forEach(function(latLng) {
+                        lassoPolygonList.push([latLng.lat, latLng.lng]);
+                    })
+                    lassoPolygon = L.polygon(lassoPolygonList);
+                    // lassoPolygon.addTo(map)
+                    lassoHandler();
                 })
-                lassoPolygon = L.polygon(lassoPolygonList);
-                // lassoPolygon.addTo(map)
-                lassoHandler();
-            })
-        }
-    });
+            }
+        });
 
-    //match scrolls on both the div
-    $(divID1).on('scroll', function () {$(divID2).scrollLeft($(this).scrollLeft());});
-    $(divID2).on('scroll', function () {$(divID1).scrollLeft($(this).scrollLeft());});
+        //match scrolls on both the div
+        $(divID1).on('scroll', function () {$(divID2).scrollLeft($(this).scrollLeft());});
+        $(divID2).on('scroll', function () {$(divID1).scrollLeft($(this).scrollLeft());});
+        $("#icon-slider").popover();
+        $("#icon-slider").on("click", function(){
+            $($(".popover-title")[0]).html("Confidence Filter >= "+confidenceFilter);
+            $("#pop-over-slider").val(confidenceFilter);
+        })
+    })
+
 });
 
 
@@ -64,14 +74,12 @@ $(document).ready(function() {
     and is triggered if there is any change in data
  */
 function plotter() {
-    var dsv = d3.dsv(";", "text/plain"); //seperator in CSV = ;
-
     dsv("/static/data/official.csv", function(error, officialData) {
         if (error) throw error;
         
         var dataType = $("input:radio[name=data-type]:checked").val();
         var processedOfficialData = processData(officialData, dataType);
-        
+
         //hide the entity for the unselected data types
         $(".entity-container").each(function(ind, div) {
             $(div).css("display", ($(div).attr("id") == "entity-" + dataType? "block" : "none"));
@@ -248,19 +256,21 @@ function geoMapHandler(mapConfig, trimmingBool=true) {
         var maxDataLocationCount = -1;
         data.forEach(function(item){
             if (item.date >= startDate && item.date <= endDate && item.location.length > 0) {
-                item.location.forEach(function(location) {
-                    heatMapMarkers.push({
-                        marker: L.circle(location, {}),
-                        date: item.date,
-                        reliability: item.reliability
-                    });
-                    //calculate the number of items at one location because heatmap neads intensity
-                    var dataLocString = coordinateTupleToString(location);
-                    if (dataLocString in dataLocationDict) {
-                        dataLocationDict[dataLocString] += 1
-                        maxDataLocationCount = Math.max(maxDataLocationCount, dataLocationDict[dataLocString]);
-                    } else {
-                        dataLocationDict[dataLocString] = 1;
+                item.location.forEach(function(location, ind) {
+                    if(parseFloat(item.confidence[ind]) >= confidenceFilter){
+                        heatMapMarkers.push({
+                            marker: L.circle(location, {}),
+                            date: item.date,
+                            reliability: item.reliability
+                        });
+                        //calculate the number of items at one location because heatmap neads intensity
+                        var dataLocString = coordinateTupleToString(location);
+                        if (dataLocString in dataLocationDict) {
+                            dataLocationDict[dataLocString] += 1
+                            maxDataLocationCount = Math.max(maxDataLocationCount, dataLocationDict[dataLocString]);
+                        } else {
+                            dataLocationDict[dataLocString] = 1;
+                        }
                     }
                 })
             }
@@ -288,19 +298,22 @@ function geoMapHandler(mapConfig, trimmingBool=true) {
                         console.log("ERROR: RELIABILITY NOT FOUND", item.reliability[ind]);
                         throw "RELIABILITY ERROR - DATASET FOUND WITH UNEXPECTED RELIABILITY"
                     }
-                    var circle = L.shapeMarker(location, {  // https://github.com/rowanwins/Leaflet.SvgShapeMarkers
-                        shape: item.reliability[ind] == "official" ? "circle" : "diamond", //select shape accordingly
-                        color: colorrange[entityKeys.indexOf(item.key)],
-                        fill: colorrange[entityKeys.indexOf(item.key)],
-                        radius: giveRadiusForMarkersZoom()
-                    }).bindPopup("Date: "+dateObjectToString(item.date)+"<br>Entity: "+item.key+"<br>Confidence: "+item.confidence[ind]);
-                    markers.addLayer(circle);
-                    markersArray.push({
-                        marker: circle,
-                        date: item.date,
-                        key: item.key,
-                        reliability: item.reliability[ind]//reliability = official/unoffical
-                    })
+                    if(parseFloat(item.confidence[ind]) >= confidenceFilter){
+                        var article = articleData[item.article[ind]]
+                        var circle = L.shapeMarker(location, {  // https://github.com/rowanwins/Leaflet.SvgShapeMarkers
+                            shape: item.reliability[ind] == "official" ? "circle" : "diamond", //select shape accordingly
+                            color: colorrange[entityKeys.indexOf(item.key)],
+                            fill: colorrange[entityKeys.indexOf(item.key)],
+                            radius: giveRadiusForMarkersZoom()
+                        }).bindPopup("Date: "+dateObjectToString(item.date)+"<br>Confidence: "+item.confidence[ind]+"<br><a href='javascript:void(0);' onclick='markerModalHandler(\""+item.article[ind]+"\");return false;'>View Document</a>");
+                        markers.addLayer(circle);
+                        markersArray.push({
+                            marker: circle,
+                            date: item.date,
+                            key: item.key,
+                            reliability: item.reliability[ind]//reliability = official/unoffical
+                        })
+                    }
                 })
             }
         })
@@ -309,6 +322,16 @@ function geoMapHandler(mapConfig, trimmingBool=true) {
 
     lassoResetHandler();
 }
+
+
+function processedArticleData(data){
+    var articleDataDict = {}
+    data.forEach(function(tuple){
+        articleDataDict[tuple["A"]] = tuple
+    })
+    return articleDataDict
+}
+
 
 
 /**
@@ -413,6 +436,7 @@ function processData(data, dataType) {
             dataDateDict[date][key]["location"] = [];
             dataDateDict[date][key]["confidence"] = [];
             dataDateDict[date][key]["reliability"] = [];
+            dataDateDict[date][key]["article"] = [];
         })
     })
 
@@ -424,6 +448,7 @@ function processData(data, dataType) {
                 dataDateDict[d.publication_date][key]["location"].push([d.latitude, d.longitude]);
                 dataDateDict[d.publication_date][key]["confidence"].push(d.confidence);
                 dataDateDict[d.publication_date][key]["reliability"].push(d.rss_feed_reliability);
+                dataDateDict[d.publication_date][key]["article"].push(d.article);
             }
         });
     })
@@ -438,7 +463,8 @@ function processData(data, dataType) {
                 "value": +dataDateDict[date][key]["value"],
                 "location": dataDateDict[date][key]["location"],
                 "confidence": dataDateDict[date][key]["confidence"],
-                "reliability": dataDateDict[date][key]["reliability"]
+                "reliability": dataDateDict[date][key]["reliability"],
+                "article": dataDateDict[date][key]["article"]
             };
             dataList.push(tuple);
         }
@@ -476,7 +502,7 @@ function appendEntities(containerID, objList, idText) {
     if(!($(containerID).find('input').length > 0)) {
         _.uniq(objList).forEach(function(item) {
                 $(containerID).append(
-                        $(document.createElement('label')).text(trimEntitiesToFitOnScreen(item))
+                        $(document.createElement('label')).text(trimTextToFitOnScreen(item, 20))
                         .attr({
                             class: "enties-label",
                             id: "label_"+idText + item
@@ -1099,9 +1125,9 @@ function heatMapHandler(bool) {
  * @param  {string} text original text
  * @return {string} trimmed down text
  */
-function trimEntitiesToFitOnScreen(text) {
-    if (text.length > 18) {
-        return text.substr(0, 16)+'...';
+function trimTextToFitOnScreen(text, size) {
+    if (text.length > size) {
+        return text.substr(0, size-2)+'...';
     }
     else {
         return text
@@ -1156,3 +1182,20 @@ function dateObjectToString(date) {
 //         map.setView([35, 10], 1)
 //     }
 // }
+
+function confidenceSlider(val) {
+    $($(".popover-title")[0]).html("Confidence Filter >= "+val);
+    confidenceFilter = parseFloat($("#pop-over-slider").val())
+    plotter();
+}
+
+
+function markerModalHandler(articleID){
+    var article = articleData[articleID];
+    $("#markerPopUpModal .modal-content").empty();
+    $("#markerPopUpModal .modal-content").append("<h2>"+article["B"]+"</h2>")
+    $("#markerPopUpModal .modal-content").append("<h4>"+article["D"]+"</h4>")
+    $("#markerPopUpModal .modal-content").append("<a href='"+article["C"]+"' target='_blank'><h4>Document Source</h4></a>")
+    $("#markerPopUpModal .modal-content").append("<p>"+article["E"]+"</p>")
+    $("#markerPopUpModal").modal("show")
+}

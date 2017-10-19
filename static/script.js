@@ -348,9 +348,11 @@ function geoMapHandler(mapConfig, trimmingBool=true) {
 
 function processedArticleData(data){
     var articleDataDict = {}
-    data.forEach(function(tuple){
-        articleDataDict[tuple["A"]] = tuple
-    })
+    if(data){
+        data.forEach(function(tuple){
+            articleDataDict[tuple["A"]] = tuple
+        })
+    }
     return articleDataDict
 }
 
@@ -904,12 +906,14 @@ function drawTimeline(config) {
           .attr("visibility", "hidden")
           .on("click", null)
           .on("dblclick",function(){
-                // geoMapHandler(config.mapConfig)
-                // d3.selectAll(".dragWhiteRectStart").attr("width", 0)
-                // d3.selectAll(".dragWhiteRectEnd").attr("width", 0).attr("x", width) 
-                // d3.selectAll(".verticalDateStart").attr("x1", 2).attr("x2", 2)
-                // d3.selectAll(".verticalDateEnd").attr("x1", width-2).attr("x2", width-2)
-                // d3.selectAll(".dragArrow").attr("visibility", "hidden")
+                trimStartDate = new Date(timeStartDate);
+                trimEndDate = new Date(timeEndDate);
+                geoMapHandler(config.mapConfig)
+                d3.selectAll(".dragWhiteRectStart").attr("width", 0)
+                d3.selectAll(".dragWhiteRectEnd").attr("width", 0).attr("x", width) 
+                d3.selectAll(".verticalDateStart").attr("x1", 2).attr("x2", 2)
+                d3.selectAll(".verticalDateEnd").attr("x1", width-2).attr("x2", width-2)
+                d3.selectAll(".dragArrow").attr("visibility", "hidden")
           });
 
     if(divID == "#timeline-1"){
@@ -949,7 +953,7 @@ function zoomInHandler(config){
     if (lassoPolygon) {
         lassoHandler()
     }
-    $(divID1).scrollLeft($(divID1).offset().left + $(divID1).width() / 2)
+    timelineUpdateWithZoom(config)
 }
 
 
@@ -967,7 +971,7 @@ function zoomOutHandler(config){
     if (lassoPolygon) {
         lassoHandler()
     }
-    $(divID1).scrollLeft($(divID1).offset().left + $(divID1).width() / 2)
+    timelineUpdateWithZoom(config)
 }
 
 // /**
@@ -978,6 +982,32 @@ function zoomOutHandler(config){
 //     config.color = d3.select("#color-scheme").node().value;
 //     drawTimeline(config);
 // }
+
+
+function timelineUpdateWithZoom(config){
+    startDate = new Date(trimStartDate);
+    endDate = new Date(trimEndDate);
+    if (trimStartDate == -1) startDate = new Date(timeStartDate);
+    if (trimEndDate == -1) endDate = new Date(timeEndDate);
+    var dateToXScale = d3.time.scale()
+        .domain([new Date(timeStartDate), new Date(timeEndDate)])
+        .range([0, width])
+    d3.selectAll(".verticalDateStart").attr("x1", dateToXScale(startDate) > 2 ? dateToXScale(startDate) : 2).attr("x2", dateToXScale(startDate) > 2 ? dateToXScale(startDate) : 2)
+    d3.selectAll(".dragWhiteRectStart").attr("width", dateToXScale(startDate) > 2 ? dateToXScale(startDate) - 2 : 0)
+                        .attr("opacity", 0.6)
+    d3.selectAll(".verticalDateEnd").attr("x1", dateToXScale(endDate) < width-2 ? dateToXScale(endDate) : width-2).attr("x2", dateToXScale(endDate) < width-2 ? dateToXScale(endDate) : width-2)
+    d3.selectAll(".dragWhiteRectEnd").attr("width", width - dateToXScale(endDate))
+        .attr("x", dateToXScale(endDate) + 2)
+        .attr("opacity", 0.6)
+
+    if ((dateToXScale(endDate) - dateToXScale(startDate)) < 0.9*config.width) {
+        var newArrowX = (dateToXScale(endDate) + dateToXScale(startDate))/2
+        d3.selectAll(".dragArrow").attr("visibility", "visibile").attr("x1", newArrowX-20).attr("x2", newArrowX+20)
+    }
+
+    var middleOfTrim = (parseFloat(d3.selectAll(".verticalDateStart").attr("x1")) + parseFloat(d3.selectAll(".verticalDateEnd").attr("x1")))/2
+    $(divID1).scrollLeft(middleOfTrim - chartBoxWidth/2)
+}
 
 
 /**

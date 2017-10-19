@@ -1,9 +1,11 @@
 from os import environ
 import flask
-from flask import Flask, render_template
+from flask import Flask, render_template, request, session, redirect, url_for
+from werkzeug import secure_filename
 from flask_mail import Mail
 from flask_sqlalchemy import SQLAlchemy
 from flask_user import login_required, UserManager, UserMixin, SQLAlchemyAdapter
+import os
 #https://github.com/lingthio/Flask-User/tree/v0.6/example_apps
 
 app = Flask(__name__)
@@ -18,6 +20,10 @@ app.config['MAIL_USE_TLS'] = False
 app.config['MAIL_USE_SSL'] = True
 app.config['MAIL_DEFAULT_SENDER'] =  '"Rohan Goel - EpidemViz" <epidemviz@gmail.com>'
 app.config['USER_APP_NAME'] = 'EpidemViz'
+
+
+app.config['UPLOAD_FOLDER']  = "./static/data/"
+
 
 # Initialize Flask extensions
 db = SQLAlchemy(app)                            # Initialize Flask-SQLAlchemy
@@ -51,11 +57,42 @@ user_manager = UserManager(db_adapter, app)     # Initialize Flask-User
 @app.route("/viz")
 # @login_required
 def viz():
-    return render_template('viz.html')
+    official_file = "official.csv"
+    unofficial_file = "un_official.csv"
+    article_file = "articles.csv"
+    if session.get('official'):
+        official_file = session["official"]
+    if session.get('official'):
+        unofficial_file = session["unofficial"]
+    if session.get('official'):
+        article_file = session["article"]
+
+    return render_template('viz.html', OFFICIAL_FILE=official_file, UNOFFICIAL_FILE=unofficial_file, ARTICLE_FILE=article_file)
+
+
+@app.route('/upload/', methods=['GET', 'POST'])
+def upload_file():
+    if request.method == 'POST':
+        file = request.files['official']
+        if file:
+            filename = secure_filename(file.filename)
+            file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+            session["official"] = filename
+
+        file = request.files['unofficial']
+        if file:
+            filename = secure_filename(file.filename)
+            file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+            session["unofficial"] = filename
+    
+    return redirect(url_for('viz'))
 
 
 @app.route("/")
 def home():
+    session["official"] = "official.csv"
+    session["unofficial"] = "un_official.csv"
+    session["article"] = "articles.csv"
     return render_template('index.html')
 
 if __name__ == "__main__":

@@ -23,7 +23,8 @@ legend{
 
 #left-pane label{
 	display: block;
-	width: 100%
+	width: 100%;
+	float: left;
 }
 
 #data-type {
@@ -273,6 +274,27 @@ legend{
     width: 90px;
 }
 
+.popover{
+	width: 100px;
+}
+
 .modal-content{
 	padding: 20px 40px;
+}
+
+#file-modal{
+	width: 350px;
+}
+
+.file-loader-button{
+	font-size: 10px;
+}
+
+.file-element{
+	margin-bottom: 10px;
+    display: block;
+}
+
+.leaflet-popup {
+	font-size: 10px;
 }

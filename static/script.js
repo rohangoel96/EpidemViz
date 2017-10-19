@@ -33,7 +33,7 @@ var articleData;
     Do the following when the page loads for the first time
  */
 $(document).ready(function() {
-    dsv("/static/data/articles.csv", function(error, data) {
+    dsv("/static/data/"+ARTICLE_FILE, function(error, data) {
         articleData = processedArticleData(data);
         plotter();
         map = L.map('map').setView([35, 10], 1);
@@ -74,10 +74,12 @@ $(document).ready(function() {
     and is triggered if there is any change in data
  */
 function plotter() {
-    dsv("/static/data/official.csv", function(error, officialData) {
+    dsv("/static/data/"+OFFICIAL_FILE, function(error, officialData) {
         if (error) throw error;
         
         var dataType = $("input:radio[name=data-type]:checked").val();
+        console.log(officialData, OFFICIAL_FILE)
+
         var processedOfficialData = processData(officialData, dataType);
 
         //hide the entity for the unselected data types
@@ -85,7 +87,7 @@ function plotter() {
             $(div).css("display", ($(div).attr("id") == "entity-" + dataType? "block" : "none"));
         })
 
-        dsv("/static/data/un_official.csv", function(error, unofficialData) {
+        dsv("/static/data/"+UNOFFICIAL_FILE, function(error, unofficialData) {
             if (error) throw error;
             var processedUnofficialData = processData(unofficialData, dataType);
             
@@ -305,7 +307,7 @@ function geoMapHandler(mapConfig, trimmingBool=true) {
                             color: colorrange[entityKeys.indexOf(item.key)],
                             fill: colorrange[entityKeys.indexOf(item.key)],
                             radius: giveRadiusForMarkersZoom()
-                        }).bindPopup("Date: "+dateObjectToString(item.date)+"<br>Confidence: "+item.confidence[ind]+"<br><a href='javascript:void(0);' onclick='markerModalHandler(\""+item.article[ind]+"\");return false;'>View Document</a>");
+                        }).bindPopup("<a href='javascript:void(0);' onclick='markerModalHandler(\""+item.article[ind]+"\");return false;'>View <i class='icon-article'></i></a> ; "+"Date: "+timeDisplayFormat(item.date)+" ; Conf.: "+parseFloat(item.confidence[ind]).toFixed(2));
                         markers.addLayer(circle);
                         markersArray.push({
                             marker: circle,
@@ -1198,4 +1200,14 @@ function markerModalHandler(articleID){
     $("#markerPopUpModal .modal-content").append("<a href='"+article["C"]+"' target='_blank'><h4>Document Source</h4></a>")
     $("#markerPopUpModal .modal-content").append("<p>"+article["E"]+"</p>")
     $("#markerPopUpModal").modal("show")
+}
+
+function fileModalHandler(){
+    $("#official_upload_label").html(OFFICIAL_FILE);
+    $("#unofficial_upload_label").html(UNOFFICIAL_FILE);
+    $("#fileSelectModal").modal("show")
+}
+
+function fileLoadHandler(fileType, fileName){
+    $("#"+fileType+"_upload_label").html(fileName)
 }

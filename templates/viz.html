@@ -28,8 +28,10 @@
                 <hr>
                 <a href="#" class="icon-svg active" id="icon-points" onclick="heatMapHandler(false)"><i class="icon-points"></i></a> 
                 <a href="#" class="icon-svg" id="icon-heatmap" onclick="heatMapHandler(true)"><i class="icon-heatmap"></i></a>
+                <hr>
                 <a href="#" class="icon-svg" id="icon-slider"  rel="popover" data-content="
-                <input id='pop-over-slider' type='range' min='0' max='1' step='0.1' onchange='confidenceSlider(this.value)' value='0.2'>" data-html="true" data-original-title="Confidence Filter >= 0.2" data-placement="right"><i class="icon-slider"></i></a>
+                <input id='pop-over-slider' type='range' min='0' max='1' step='0.1' onchange='confidenceSlider(this.value)' value='0.2'>" data-html="true" data-original-title="Confidence Filter >= 0.2" data-placement="right" data-container="body"><i class="icon-slider"></i></a>
+                <a href="#" class="icon-svg" id="icon-upload" onclick="fileModalHandler()"><i class="icon-upload"></i></a>
             </div>
             <span class="col-md-1"></span>
             <div class="col-md-3 well well-md" id="left-pane">
@@ -120,8 +122,36 @@
                 </div>
             </div>
         </div>
+        <div class="modal fade bs-example-modal-lg" id="fileSelectModal" tabindex="1" role="dialog" aria-labelledby="myLargeModalLabel2">
+            <div class="modal-dialog modal-sm" role="document">
+                <div class="modal-content" id="file-modal">
+                    <form action="/upload/" method="post" enctype = "multipart/form-data">
+                        <span class="file-element">
+                            <label class="btn btn-warning file-loader-button" for="officialCSV">
+                                <input id="officialCSV" type="file" style="display:none" accept=".csv" name= "official" onchange="fileLoadHandler('official', this.files[0].name)">Official CSV File</label>
+                            <span class='label label-info file-loader-name' id="official_upload_label"></span>
+                        </span>
+                        <span class="file-element">
+                            <label class="btn btn-warning file-loader-button" for="unofficialCSV">
+                                <input id="unofficialCSV" type="file" style="display:none" accept=".csv" name= "unofficial" onchange="fileLoadHandler('unofficial', this.files[0].name)">Non-Official CSV File</label>
+                            <span class='label label-info file-loader-name' id="unofficial_upload_label"></span>
+                        </span>
+                        <!-- <span class="file-element">
+                            <label class="btn btn-warning file-loader-button" for="articleCSV">
+                                <input id="articleCSV" type="file" style="display:none" accept=".csv" onchange="fileLoadHandler('article', this.files[0].name)">Articles CSV File</label>
+                            <span class='label label-info file-loader-name' id="article_upload_label"></span>
+                        </span> -->
+                        <input type = "submit"/ class="btn btn-success" style="font-size: 10px;">
+                    </form>
+                </div>
+            </div>
+        </div>
     </div>
-
+    <script type="text/javascript">
+        var OFFICIAL_FILE = "{{ OFFICIAL_FILE }}"
+        var UNOFFICIAL_FILE = "{{ UNOFFICIAL_FILE }}"
+        var ARTICLE_FILE = "{{ ARTICLE_FILE }}"
+    </script>
     <script type="text/javascript" src="static/util/slider.js"></script>
     <script type="text/javascript" src="static/util/lasso/leaflet-src.js"></script>
     <script type="text/javascript" src="static/util/lasso/leaflet-freedraw.web.js"></script>

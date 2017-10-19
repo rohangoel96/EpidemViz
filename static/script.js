@@ -78,8 +78,6 @@ function plotter() {
         if (error) throw error;
         
         var dataType = $("input:radio[name=data-type]:checked").val();
-        console.log(officialData, OFFICIAL_FILE)
-
         var processedOfficialData = processData(officialData, dataType);
 
         //hide the entity for the unselected data types
@@ -307,7 +305,8 @@ function geoMapHandler(mapConfig, trimmingBool=true) {
                             color: colorrange[entityKeys.indexOf(item.key)],
                             fill: colorrange[entityKeys.indexOf(item.key)],
                             radius: giveRadiusForMarkersZoom()
-                        }).bindPopup("<a href='javascript:void(0);' onclick='markerModalHandler(\""+item.article[ind]+"\");return false;'>View <i class='icon-article'></i></a> ; "+"Date: "+timeDisplayFormat(item.date)+" ; Conf.: "+parseFloat(item.confidence[ind]).toFixed(2));
+                        })
+                        // .bindPopup("<a href='javascript:void(0);' onclick='markerModalHandler(\""+item.article[ind]+"\");return false;'>View <i class='icon-article'></i></a> ; "+"Date: "+timeDisplayFormat(item.date)+" ; Conf.: "+parseFloat(item.confidence[ind]).toFixed(2));
                         markers.addLayer(circle);
                         markersArray.push({
                             marker: circle,
@@ -320,8 +319,29 @@ function geoMapHandler(mapConfig, trimmingBool=true) {
             }
         })
         map.addLayer(markers);
+        
+        map.on('click', function(e) {
+            var popupText = ""
+            var popLocation= e.latlng;
+            data.forEach(function(item){
+                if (item.date >= startDate && item.date <= endDate && item.location.length > 0) {
+                    item.location.forEach(function(location, ind) {
+                        if(parseFloat(item.confidence[ind]) >= confidenceFilter && getDistanceFromLatLonInKm(location, popLocation) < 50){
+                           var iconShape = '<i class="icon-'+(item.reliability[ind] == "official" ? "circle" : "rhombus")+'"></i>'
+                           popupText += "<span style='color:"+colorrange[entityKeys.indexOf(item.key)]+"'>"+iconShape+"</span> "+"Date: "+timeDisplayFormat(item.date)+" ; Conf.: "+parseFloat(item.confidence[ind]).toFixed(2)+" ; <a href='javascript:void(0);' onclick='markerModalHandler(\""+item.article[ind]+"\");return false;'>View <i class='icon-article'></i></a><br>"
+                        }
+                    })
+                }
+            })
+            if(popupText.length > 0){
+                var popup = L.popup()
+                    .setLatLng(popLocation)
+                    .setContent(popupText)
+                    .openOn(map);   
+            }
+        });
     }
-
+    
     lassoResetHandler();
 }
 

@@ -298,3 +298,9 @@ legend{
 .leaflet-popup {
 	font-size: 10px;
 }
+
+.leaflet-popup-content{
+	max-height: 100px;
+    overflow-y: scroll;
+    width: 200px;
+}

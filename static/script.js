@@ -1018,13 +1018,13 @@ function lassoHandler(){
     var items = []
     if(heatMapEnableBool){
         heatMapMarkers.forEach(function(item) {
-            if (lassoPolygon.getBounds().contains(item.marker._latlng)) {
+            if (isMarkerInsidePolygon(item.marker, lassoPolygon)) {
                 items.push(item)
             }
         })
     } else {
         markersArray.forEach(function(item) {
-            if (lassoPolygon.getBounds().contains(item.marker._latlng)) {
+            if (isMarkerInsidePolygon(item.marker, lassoPolygon)) {
                 items.push(item)
             }
         })

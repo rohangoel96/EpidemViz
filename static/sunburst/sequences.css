@@ -1,0 +1,55 @@
+#sidebar {
+  /*float: right;*/
+  width: 150px;
+}
+
+#sequence {
+  width: 275px;
+  height: 25px;
+  font-size: 9px;
+}
+
+#legend {
+  padding: 10px 0 0 3px;
+}
+
+#sequence text, #legend text {
+  font-weight: 600;
+  fill: #fff;
+}
+
+#sunburstchart {
+  position: relative;
+}
+
+#sunburstchart path {
+  stroke: #fff;
+}
+
+#explanation {
+  position: absolute;
+  top: 100px;
+  left: 70px;
+  width: 140px;
+  text-align: center;
+  color: #666;
+  z-index: -1;
+  font-size: 14px;
+}
+
+#percentage {
+  font-size: 20px;
+}
+
+#sunburstLegenfPopUpModal .modal-content{
+  height: 500px;
+  width: 250px;
+  /*margin-left: 250px;*/
+}
+
+#legendText{
+  position: absolute;
+  top: 275px;
+  z-index: 2;
+  left: 240px;
+}

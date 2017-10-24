@@ -32,7 +32,7 @@ legend{
 }
 
 #data-type label{
-	margin-bottom: 0;
+	margin-bottom: 5px;
 }
 
 #left-pane label input{
@@ -201,6 +201,10 @@ legend{
 	max-height: 130px;
 }
 
+.panel-group{
+	margin-left: 15px;
+}
+
 .panel-title{
 	font-size: 12px;
 	position: relative;
@@ -303,4 +307,34 @@ legend{
 	max-height: 100px;
     overflow-y: scroll;
     width: 200px;
+}
+
+#legend{
+	font-size: 9px;
+}
+
+.sortable{
+	padding: 0;
+	list-style-type: none;
+}
+
+span.grippy {
+	width: 10px;
+	height: 20px;
+	display: inline-block;
+	overflow: hidden;
+	line-height: 5px;
+	padding: 3px 4px;
+	cursor: move;
+	vertical-align: middle;
+	margin-top: -.7em;
+	margin-right: .3em;
+	font-size: 12px;
+	font-family: sans-serif;
+	letter-spacing: 2px;
+	color: #cccccc;
+	text-shadow: 1px 0 1px black;
+}
+span.grippy::after {
+	content: '.. .. .. ..';
 }

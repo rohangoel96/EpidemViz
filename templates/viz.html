@@ -46,9 +46,11 @@
                     <div class="left-pane-element" id="data-type">
                         <fieldset>
                             <legend>Data Type</legend>
-                            <label><input type="radio" value="diseases" onclick="plotter(this)" name="data-type" checked>Diseases</label>
-                            <label><input type="radio" value="species" onclick="plotter(this)" name="data-type">Hosts</label>
-                            <label><input type="radio" value="symptoms" onclick="plotter(this)" name="data-type">Symptoms</label>
+                            <ul class="sortable">
+                                <li><label><input type="radio" value="diseases" onclick="plotter(this)" name="data-type" checked>Diseases<span class="grippy"></span></label></li>
+                                <li><label><input type="radio" value="species" onclick="plotter(this)" name="data-type">Hosts<span class="grippy"></span></label></li>
+                                <li><label><input type="radio" value="symptoms" onclick="plotter(this)" name="data-type">Symptoms<span class="grippy"></span></label></li>
+                            </ul>
                         </fieldset>
                     </div>
                 </div>
@@ -72,7 +74,17 @@
         </div>
         <div class="row">
             <div class="col-md-1"></div>
-            <div class="col-md-10" id="timelines-container">
+            <div class="col-md-3" style="padding: 0">
+                <div id="sequence"></div>
+                <div id="sunburstchart">
+                    <div id="explanation" style="visibility: hidden;">
+                        <span id="percentage"></span><br/>
+                        of articles have this combination
+                    </div>
+                </div>
+                <span id="legendText"><a href="#" onclick='javascript:$("#sunburstLegenfPopUpModal").modal("show")'>Legend</a></span>
+            </div>
+            <div class="col-md-7" id="timelines-container">
                 <div class="panel-group">
                     <div class="panel panel-default">
                         <div class="panel-heading">
@@ -115,6 +127,15 @@
 
             </div>            
         </div>
+        <div class="modal fade bs-example-modal-lg" id="sunburstLegenfPopUpModal" tabindex="1" role="dialog" aria-labelledby="myLargeModalLabel">
+            <div class="modal-dialog modal-sm" role="document">
+                <div class="modal-content">
+                    <div id="sidebar">
+                        <div id="legend"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
 
         <div class="modal fade bs-example-modal-lg" id="markerPopUpModal" tabindex="1" role="dialog" aria-labelledby="myLargeModalLabel">
             <div class="modal-dialog modal-lg" role="document">
@@ -152,10 +173,12 @@
         var UNOFFICIAL_FILE = "{{ UNOFFICIAL_FILE }}"
         var ARTICLE_FILE = "{{ ARTICLE_FILE }}"
     </script>
+    <script type="text/javascript" src="static/sunburst/sequences.js"></script>
     <script type="text/javascript" src="static/util/slider.js"></script>
     <script type="text/javascript" src="static/util/lasso/leaflet-src.js"></script>
     <script type="text/javascript" src="static/util/lasso/leaflet-freedraw.web.js"></script>
     <script type="text/javascript" src="static/util/mapDistanceCalc.js"></script>
+    <script type="text/javascript" src="static/util/orderListDraggable.js"></script>
     <link rel="stylesheet" type="text/css" href="static/util/slider.css">
     <link rel="stylesheet" type="text/css" href="static/util/lasso/leaflet.css">
     <!-- http://mediatemple.net/blog/tips/creating-implementing-icon-font-tutorial/ -->
@@ -164,5 +187,5 @@
     <script type="text/javascript" src="static/util/extraShapesLeaflet.js"></script>
     <script type="text/javascript" src="static/util/heatmap.min.js"></script>
     <script type="text/javascript" src="static/script.js"></script>
-
+    <link rel="stylesheet" type="text/css" href="static/sunburst/sequences.css"></script>
 {% endblock%}

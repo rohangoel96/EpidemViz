@@ -29,6 +29,8 @@ var lassoPolygon= null; //the lasso selection polygon
 var confidenceFilter = 0.2;
 var dsv = d3.dsv(";", "text/plain"); //seperator in CSV = ;
 var articleData;
+var DHSOrder = "SHD";
+
 /*
     Do the following when the page loads for the first time
  */
@@ -64,6 +66,7 @@ $(document).ready(function() {
             $($(".popover-title")[0]).html("Confidence Filter >= "+confidenceFilter);
             $("#pop-over-slider").val(confidenceFilter);
         })
+        sortable('.sortable');
     })
 
 });
@@ -104,8 +107,14 @@ function plotter() {
                 officialData: processedOfficialData[0],
                 unofficialData: processedUnofficialData[0],
                 colorrange: colorrange,
-                entityKeys: entityKeys
+                entityKeys: entityKeys,
             };
+
+            var sunburstData = {
+                BOTH:processedCombinedData[5],
+                OFFICIAL:processedOfficialData[5],
+                UNOFFICIAL:processedUnofficialData[5]
+            }
 
             //configuration object for the first timeline
             var timeline1Config = {
@@ -146,6 +155,7 @@ function plotter() {
             drawTimeline(timeline1Config); //draw the timeline 1
             drawTimeline(timeline2Config); //draw the timeline 2
             geoMapHandler(mapConfig, false); //draw the map
+            sunburstHandler(sunburstData);
 
 
             //handle selection of official/unofficial/both data on the geo map
@@ -161,6 +171,7 @@ function plotter() {
                     $("#map-data-official").prop("checked", true);
                 }
                 geoMapHandler(mapConfig); //update map
+                sunburstHandler(sunburstData);//updateSunburt
             });
 
             // //handle collapsing of both timelines
@@ -197,9 +208,15 @@ function plotter() {
             $( "label[id^='label_"+$("input:radio[name=data-type]:checked").val()+"']").each(function(ind, item) {
                 $(this).css("color", colorrange[entityKeys.indexOf($(this).attr("id").split("_")[2])]);
             })
-
+            sortable('.sortable')[0].addEventListener('sortupdate', function(e) {
+                var DHSOrderReverse = ""
+                e.detail.newStartList.forEach(function(ele){
+                    DHSOrderReverse+= $($($(ele).children(":first")[0])[0]).text()[0]
+                });
+                DHSOrder = DHSOrderReverse.split( '' ).reverse( ).join('');
+                sunburstHandler(sunburstData);
+            });
         });
-    
     });
 
 }
@@ -378,6 +395,15 @@ function processData(data, dataType) {
             dates.push(d.publication_date);
     });
 
+    var sunburstDict = {
+        "DHS": {},
+        "DSH": {},
+        "HDS": {},
+        "HSD": {},
+        "SDH": {},
+        "SHD": {}
+    }, sunburstUniqueItems = [];
+
     appendEntities("#entity-species", species_host, 'species_');
     appendEntities("#entity-diseases", diseases, 'diseases_');
     appendEntities("#entity-symptoms", symptoms, 'symptoms_');
@@ -465,6 +491,40 @@ function processData(data, dataType) {
     })
 
     data.map(function(d) {
+         d["diseases"].split(',').filter(function(entry) { return entry.trim() != ''; }).forEach(function(_disease){
+            d["species"].split(',').filter(function(entry) { return entry.trim() != ''; }).forEach(function(_host){
+                d["symptoms"].split(',').filter(function(entry) { return entry.trim() != ''; }).forEach(function(_symptom){
+                    var disease = _disease.replace(new RegExp('-', 'g'), "_");
+                    var host = _host.replace(new RegExp('-', 'g'), "_");
+                    var symptom = _symptom.replace(new RegExp('-', 'g'), "_");
+                    
+                    var dhskey = disease+"-"+host+"-"+symptom;
+                    var dshkey = disease+"-"+symptom+"-"+host;
+                    var hdskey = host+"-"+disease+"-"+symptom;
+                    var hsdkey = host+"-"+symptom+"-"+disease;
+                    var sdhkey = symptom+"-"+disease+"-"+host;
+                    var shdkey = symptom+"-"+host+"-"+disease;
+
+                    if(dhskey in sunburstDict["DHS"]){
+                        sunburstDict["DHS"][dhskey] += 1
+                        sunburstDict["DSH"][dshkey] += 1
+                        sunburstDict["HDS"][hdskey] += 1
+                        sunburstDict["HSD"][hsdkey] += 1
+                        sunburstDict["SDH"][sdhkey] += 1
+                        sunburstDict["SHD"][shdkey] += 1
+                    } else {
+                        sunburstDict["DHS"][dhskey] = 1
+                        sunburstDict["DSH"][dshkey] = 1
+                        sunburstDict["HDS"][hdskey] = 1
+                        sunburstDict["HSD"][hsdkey] = 1
+                        sunburstDict["SDH"][sdhkey] = 1
+                        sunburstDict["SHD"][shdkey] = 1
+                    }
+                    sunburstUniqueItems = _.uniq(sunburstUniqueItems.concat(dhskey.split("-")))
+                })
+            })
+        })
+
         d[dataType].split(',').forEach(function(key) {
             if (activeKeys.indexOf(key) > -1) {
                 //fill in the value
@@ -493,7 +553,14 @@ function processData(data, dataType) {
             dataList.push(tuple);
         }
     } 
-    return [dataList, activeKeys, dataDateDict, dates, allKeys];
+
+    sunburstColors = {}
+    var colorList = colores_google(sunburstUniqueItems.length)
+    for (var i = sunburstUniqueItems.length - 1; i >= 0; i--) {
+        sunburstColors[sunburstUniqueItems[i]]=colorList[i]
+    }
+
+    return [dataList, activeKeys, dataDateDict, dates, allKeys, [sunburstDict, sunburstColors]];
 }
 
 
@@ -524,7 +591,7 @@ function stringToCoordinateTuple(str){
  */
 function appendEntities(containerID, objList, idText) {
     if(!($(containerID).find('input').length > 0)) {
-        _.uniq(objList).forEach(function(item) {
+        _.uniq(objList.filter(function(entry) { return entry.trim() != ''; })).forEach(function(item) {
                 $(containerID).append(
                         $(document.createElement('label')).text(trimTextToFitOnScreen(item, 20))
                         .attr({
@@ -1260,4 +1327,14 @@ function fileModalHandler(){
 
 function fileLoadHandler(fileType, fileName){
     $("#"+fileType+"_upload_label").html(fileName)
+}
+
+function formatDataForSunburt(sunburstDict){
+    return Object.keys(sunburstDict).map(function(key) {
+      return [key, parseInt(sunburstDict[key])];
+    });
+}
+
+function sunburstHandler(sunburstData){
+    initSunburst(formatDataForSunburt(sunburstData[mapDataSelector][0][DHSOrder]), sunburstData[mapDataSelector][1])
 }

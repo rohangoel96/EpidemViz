@@ -18,8 +18,8 @@ app.config['MAIL_USERNAME'] = 'epidemviz@gmail.com'
 app.config['MAIL_PASSWORD'] = 'LIRMM_ROHAN'
 app.config['MAIL_USE_TLS'] = False
 app.config['MAIL_USE_SSL'] = True
-app.config['MAIL_DEFAULT_SENDER'] =  '"Rohan Goel - EpidemViz" <epidemviz@gmail.com>'
-app.config['USER_APP_NAME'] = 'EpidemViz'
+app.config['MAIL_DEFAULT_SENDER'] =  '"Rohan Goel - EpidNews" <epidemviz@gmail.com>'
+app.config['USER_APP_NAME'] = 'EpidNews'
 
 
 app.config['UPLOAD_FOLDER']  = "./static/data/"

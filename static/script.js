@@ -29,7 +29,7 @@ var lassoPolygon= null; //the lasso selection polygon
 var confidenceFilter = 0.2;
 var dsv = d3.dsv(";", "text/plain"); //seperator in CSV = ;
 var articleData;
-var DHSOrder = "SHD";
+var DHSOrder = "DHS";
 
 /*
     Do the following when the page loads for the first time
@@ -66,7 +66,9 @@ $(document).ready(function() {
             $($(".popover-title")[0]).html("Confidence Filter >= "+confidenceFilter);
             $("#pop-over-slider").val(confidenceFilter);
         })
-        sortable('.sortable');
+        sortable('.sortable', {
+            hoverClass: 'is-hovered'
+        }); //https://github.com/lukasoppermann/html5sortable
     })
 
 });
@@ -131,7 +133,8 @@ function plotter() {
                     official: processedOfficialData[2],
                     unofficial: processedUnofficialData[2]
                 },
-                mapConfig: mapConfig
+                mapConfig: mapConfig,
+                sunburstData: sunburstData
             };
 
             //configuration object for the second timeline
@@ -149,13 +152,14 @@ function plotter() {
                     official: processedOfficialData[2],
                     unofficial: processedUnofficialData[2]
                 },
-                mapConfig: mapConfig
+                mapConfig: mapConfig,
+                sunburstData: sunburstData
             };
 
             drawTimeline(timeline1Config); //draw the timeline 1
             drawTimeline(timeline2Config); //draw the timeline 2
             geoMapHandler(mapConfig, false); //draw the map
-            sunburstHandler(sunburstData);
+            sunburstHandler(sunburstData, false);
 
 
             //handle selection of official/unofficial/both data on the geo map
@@ -209,11 +213,11 @@ function plotter() {
                 $(this).css("color", colorrange[entityKeys.indexOf($(this).attr("id").split("_")[2])]);
             })
             sortable('.sortable')[0].addEventListener('sortupdate', function(e) {
-                var DHSOrderReverse = ""
+                var DHSOrderTemp = ""
                 e.detail.newStartList.forEach(function(ele){
-                    DHSOrderReverse+= $($($(ele).children(":first")[0])[0]).text()[0]
+                    DHSOrderTemp+= $($($(ele).children(":first")[0])[0]).text()[0]
                 });
-                DHSOrder = DHSOrderReverse.split( '' ).reverse( ).join('');
+                DHSOrder = DHSOrderTemp;
                 sunburstHandler(sunburstData);
             });
         });
@@ -321,7 +325,8 @@ function geoMapHandler(mapConfig, trimmingBool=true) {
                             shape: item.reliability[ind] == "official" ? "circle" : "diamond", //select shape accordingly
                             color: colorrange[entityKeys.indexOf(item.key)],
                             fill: colorrange[entityKeys.indexOf(item.key)],
-                            radius: giveRadiusForMarkersZoom()
+                            radius: giveRadiusForMarkersZoom(),
+                            weight: 1
                         })
                         // .bindPopup("<a href='javascript:void(0);' onclick='markerModalHandler(\""+item.article[ind]+"\");return false;'>View <i class='icon-article'></i></a> ; "+"Date: "+timeDisplayFormat(item.date)+" ; Conf.: "+parseFloat(item.confidence[ind]).toFixed(2));
                         markers.addLayer(circle);
@@ -343,7 +348,7 @@ function geoMapHandler(mapConfig, trimmingBool=true) {
             data.forEach(function(item){
                 if (item.date >= startDate && item.date <= endDate && item.location.length > 0) {
                     item.location.forEach(function(location, ind) {
-                        if(parseFloat(item.confidence[ind]) >= confidenceFilter && getDistanceFromLatLonInKm(location, popLocation) < 50){
+                        if(parseFloat(item.confidence[ind]) >= confidenceFilter && getDistanceFromLatLonInKm(location, popLocation) < getPopUpTriggerDistance()){
                            var iconShape = '<i class="icon-'+(item.reliability[ind] == "official" ? "circle" : "rhombus")+'"></i>'
                            popupText += "<span style='color:"+colorrange[entityKeys.indexOf(item.key)]+"'>"+iconShape+"</span> "+"Date: "+timeDisplayFormat(item.date)+" ; Conf.: "+parseFloat(item.confidence[ind]).toFixed(2)+" ; <a href='javascript:void(0);' onclick='markerModalHandler(\""+item.article[ind]+"\");return false;'>View <i class='icon-article'></i></a><br>"
                         }
@@ -402,7 +407,7 @@ function processData(data, dataType) {
         "HSD": {},
         "SDH": {},
         "SHD": {}
-    }, sunburstUniqueItems = [];
+    }, sunburstUniqueItems = [], uniq_disease = [], uniq_host = [], uniq_symptoms = [];
 
     appendEntities("#entity-species", species_host, 'species_');
     appendEntities("#entity-diseases", diseases, 'diseases_');
@@ -494,33 +499,38 @@ function processData(data, dataType) {
          d["diseases"].split(',').filter(function(entry) { return entry.trim() != ''; }).forEach(function(_disease){
             d["species"].split(',').filter(function(entry) { return entry.trim() != ''; }).forEach(function(_host){
                 d["symptoms"].split(',').filter(function(entry) { return entry.trim() != ''; }).forEach(function(_symptom){
-                    var disease = _disease.replace(new RegExp('-', 'g'), "_");
-                    var host = _host.replace(new RegExp('-', 'g'), "_");
-                    var symptom = _symptom.replace(new RegExp('-', 'g'), "_");
-                    
-                    var dhskey = disease+"-"+host+"-"+symptom;
-                    var dshkey = disease+"-"+symptom+"-"+host;
-                    var hdskey = host+"-"+disease+"-"+symptom;
-                    var hsdkey = host+"-"+symptom+"-"+disease;
-                    var sdhkey = symptom+"-"+disease+"-"+host;
-                    var shdkey = symptom+"-"+host+"-"+disease;
+                    var disabledKeys = allKeys.filter(function(x) { return activeKeys.indexOf(x) < 0 })
+                    if(!(disabledKeys.indexOf(_disease)>-1 || disabledKeys.indexOf(_host)>-1 ||disabledKeys.indexOf(_symptom)>-1)){
+                        var disease = _disease.replace(new RegExp('-', 'g'), "_");
+                        var host = _host.replace(new RegExp('-', 'g'), "_");
+                        var symptom = _symptom.replace(new RegExp('-', 'g'), "_");
+                        
+                        var dhskey = disease+"-"+host+"-"+symptom;
+                        var dshkey = disease+"-"+symptom+"-"+host;
+                        var hdskey = host+"-"+disease+"-"+symptom;
+                        var hsdkey = host+"-"+symptom+"-"+disease;
+                        var sdhkey = symptom+"-"+disease+"-"+host;
+                        var shdkey = symptom+"-"+host+"-"+disease;
 
-                    if(dhskey in sunburstDict["DHS"]){
-                        sunburstDict["DHS"][dhskey] += 1
-                        sunburstDict["DSH"][dshkey] += 1
-                        sunburstDict["HDS"][hdskey] += 1
-                        sunburstDict["HSD"][hsdkey] += 1
-                        sunburstDict["SDH"][sdhkey] += 1
-                        sunburstDict["SHD"][shdkey] += 1
-                    } else {
-                        sunburstDict["DHS"][dhskey] = 1
-                        sunburstDict["DSH"][dshkey] = 1
-                        sunburstDict["HDS"][hdskey] = 1
-                        sunburstDict["HSD"][hsdkey] = 1
-                        sunburstDict["SDH"][sdhkey] = 1
-                        sunburstDict["SHD"][shdkey] = 1
-                    }
-                    sunburstUniqueItems = _.uniq(sunburstUniqueItems.concat(dhskey.split("-")))
+                        if(dhskey in sunburstDict["DHS"]){
+                            sunburstDict["DHS"][dhskey].push(d.publication_date)
+                            sunburstDict["DSH"][dshkey].push(d.publication_date)
+                            sunburstDict["HDS"][hdskey].push(d.publication_date)
+                            sunburstDict["HSD"][hsdkey].push(d.publication_date)
+                            sunburstDict["SDH"][sdhkey].push(d.publication_date)
+                            sunburstDict["SHD"][shdkey].push(d.publication_date)
+                        } else {
+                            sunburstDict["DHS"][dhskey] = [d.publication_date]
+                            sunburstDict["DSH"][dshkey] = [d.publication_date]
+                            sunburstDict["HDS"][hdskey] = [d.publication_date]
+                            sunburstDict["HSD"][hsdkey] = [d.publication_date]
+                            sunburstDict["SDH"][sdhkey] = [d.publication_date]
+                            sunburstDict["SHD"][shdkey] = [d.publication_date]
+                        }
+                        uniq_disease.push(disease)
+                        uniq_symptoms.push(symptom)
+                        uniq_host.push(host)
+                    }                    
                 })
             })
         })
@@ -537,6 +547,7 @@ function processData(data, dataType) {
         });
     })
 
+    sunburstUniqueItems = _.uniq(uniq_disease).concat(_.uniq(uniq_host)).concat(_.uniq(uniq_symptoms))
     dataList = [];
     //add data in a sequence of dates
     for (date in dataDateDict) {
@@ -555,7 +566,7 @@ function processData(data, dataType) {
     } 
 
     sunburstColors = {}
-    var colorList = colores_google(sunburstUniqueItems.length)
+    var colorList = sunburst_colors(sunburstUniqueItems.length)
     for (var i = sunburstUniqueItems.length - 1; i >= 0; i--) {
         sunburstColors[sunburstUniqueItems[i]]=colorList[i]
     }
@@ -740,11 +751,13 @@ function drawTimeline(config) {
     svg.selectAll(".layer")
         .attr("opacity", 1)
         .on("mouseover", function(d, i) {
-            d3.selectAll(".chart").selectAll(".layer").transition()
-            .duration(250)
-            .attr("opacity", function(d, j) {
-                return j != i ? 0.25 : 1; //fade the non-hovered flows
-            })
+            if(!clickedOnSurburst){
+                d3.selectAll(".chart").selectAll(".layer").transition()
+                .duration(250)
+                .attr("opacity", function(d, j) {
+                    return j != i ? 0.25 : 1; //fade the non-hovered flows
+                })
+            }
         })
         .on("mousemove", function(d, i) {
             mouse = d3.mouse(this);
@@ -786,10 +799,12 @@ function drawTimeline(config) {
                 .style("top", ($(divID2).offset().top + mousey - 25) +"px");
         })
         .on("mouseout", function(d, i) {
-            d3.selectAll(".chart").selectAll(".layer")
+            if(!clickedOnSurburst){
+                d3.selectAll(".chart").selectAll(".layer")
                 .transition()
                 .duration(250)
-                .attr("opacity", "1");
+                .attr("opacity", "1"); 
+            }
 
             tooltip1.html( "<p>" + d.key + "<br>" + streamValue1 + "</p>" ).style("visibility", "hidden");
             tooltip2.html( "<p>" + d.key + "<br>" + streamValue2 + "</p>" ).style("visibility", "hidden");
@@ -835,6 +850,7 @@ function drawTimeline(config) {
                 var mouseDate = dateObjectToString(x.invert(parseFloat(d3.select(this).attr('x1'))));
                 trimStartDate = mouseDate;
                 geoMapHandler(config.mapConfig)
+                sunburstHandler(config.sunburstData)
                 dragWhiteRect1.attr("opacity", 0.6)
                 if (parseFloat(verticalDateEnd.attr("x1")) - parseFloat(verticalDateStart.attr("x1")) < 0.9*width) {
                     var newArrowX = (parseFloat(verticalDateStart.attr("x1")) + parseFloat(verticalDateEnd.attr("x1")))/2
@@ -864,6 +880,7 @@ function drawTimeline(config) {
             var mouseDate = dateObjectToString(x.invert(parseFloat(d3.select(this).attr('x1'))));
             trimEndDate = mouseDate;
             geoMapHandler(config.mapConfig);
+            sunburstHandler(config.sunburstData);
             dragWhiteRect2.attr("opacity", 0.6)
             if (parseFloat(verticalDateEnd.attr("x1")) - parseFloat(verticalDateStart.attr("x1")) < 0.9*width) {
                 var newArrowX = (parseFloat(verticalDateStart.attr("x1")) + parseFloat(verticalDateEnd.attr("x1")))/2
@@ -901,6 +918,7 @@ function drawTimeline(config) {
             d3.selectAll(".verticalHover").attr("visibility", "visible")
             d3.selectAll(".tooltips").style("display", "block")
             geoMapHandler(config.mapConfig);
+            sunburstHandler(config.sunburstData);
         }); 
            
 
@@ -975,7 +993,8 @@ function drawTimeline(config) {
           .on("dblclick",function(){
                 trimStartDate = new Date(timeStartDate);
                 trimEndDate = new Date(timeEndDate);
-                geoMapHandler(config.mapConfig)
+                geoMapHandler(config.mapConfig);
+                sunburstHandler(config.sunburstData);
                 d3.selectAll(".dragWhiteRectStart").attr("width", 0)
                 d3.selectAll(".dragWhiteRectEnd").attr("width", 0).attr("x", width) 
                 d3.selectAll(".verticalDateStart").attr("x1", 2).attr("x2", 2)
@@ -1329,12 +1348,44 @@ function fileLoadHandler(fileType, fileName){
     $("#"+fileType+"_upload_label").html(fileName)
 }
 
-function formatDataForSunburt(sunburstDict){
-    return Object.keys(sunburstDict).map(function(key) {
-      return [key, parseInt(sunburstDict[key])];
-    });
+
+function sunburstHandler(sunburstData, trimmingBool=true){
+    var startDate, endDate;
+    if(trimmingBool){
+        startDate = new Date(trimStartDate);
+        endDate = new Date(trimEndDate);
+        if (trimStartDate == -1) startDate = new Date(timeStartDate);
+        if (trimEndDate == -1) endDate = new Date(timeEndDate);
+
+    } else {
+        startDate = new Date(timeStartDate);
+        endDate = new Date(timeEndDate);
+    }
+    var reqSunburstData = sunburstData[mapDataSelector][0][DHSOrder]
+    var reqSunburstDataTrimmed = []
+
+    for (key in reqSunburstData){
+        var countForCurrentKey = 0
+        reqSunburstData[key].forEach(function(itemDate){
+            if (new Date(itemDate) >= startDate && new Date(itemDate) <= endDate) {
+                countForCurrentKey += 1
+            }
+        })
+        if(countForCurrentKey > 0){
+            reqSunburstDataTrimmed.push([key, countForCurrentKey])
+        }
+    }
+    initSunburst(reqSunburstDataTrimmed, sunburstData[mapDataSelector][1])
 }
 
-function sunburstHandler(sunburstData){
-    initSunburst(formatDataForSunburt(sunburstData[mapDataSelector][0][DHSOrder]), sunburstData[mapDataSelector][1])
+function getPopUpTriggerDistance(){
+    var currentZoom = map.getZoom();
+    if(currentZoom <= 6) {
+        return 150/giveRadiusForMarkersZoom();
+    } else if (currentZoom <=8) {
+        return 15;
+    } else {
+        return 10;
+    }
+    
 }

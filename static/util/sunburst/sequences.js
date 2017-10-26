@@ -1,4 +1,5 @@
 // https://bl.ocks.org/kerryrodden/7090426
+var clickedOnSurburst = false;
 function initSunburst(data, colorData){
     $("#sunburstchart svg").remove()
     $("#legend svg").remove()
@@ -75,7 +76,8 @@ function initSunburst(data, colorData){
           .attr("fill-rule", "evenodd")
           .style("fill", function(d) { return colors[d.name]; })
           .style("opacity", 1)
-          .on("mouseover", mouseover);
+          .on("mouseover", mouseover)
+          .on("click", mouseclick);
 
       // Add the mouseleave handler to the bounding circle.
       d3.select("#container").on("mouseleave", mouseleave);
@@ -86,56 +88,107 @@ function initSunburst(data, colorData){
 
     // Fade all but the current sequence, and show it in the breadcrumb trail.
     function mouseover(d) {
+      if(!clickedOnSurburst){
+        var percentage = (100 * d.value / totalSize).toPrecision(3);
+        var percentageString = percentage + "%";
+        if (percentage < 0.1) {
+          percentageString = "< 0.1%";
+        }
 
-      var percentage = (100 * d.value / totalSize).toPrecision(3);
-      var percentageString = percentage + "%";
-      if (percentage < 0.1) {
-        percentageString = "< 0.1%";
+        d3.select("#percentage")
+            .text(percentageString);
+
+        d3.select("#explanation")
+            .style("visibility", "");
+
+        var sequenceArray = getAncestors(d);
+        updateBreadcrumbs(sequenceArray, percentageString);
+
+        // Fade all the segments.
+        d3.selectAll("#sunburstchart path")
+            .style("opacity", 0.3);
+
+        // Then highlight only those that are an ancestor of the current segment.
+        vis.selectAll("#sunburstchart path")
+            .filter(function(node) {
+                      return (sequenceArray.indexOf(node) >= 0);
+                    })
+            .style("opacity", 1);
       }
-
-      d3.select("#percentage")
-          .text(percentageString);
-
-      d3.select("#explanation")
-          .style("visibility", "");
-
-      var sequenceArray = getAncestors(d);
-      updateBreadcrumbs(sequenceArray, percentageString);
-
-      // Fade all the segments.
-      d3.selectAll("#sunburstchart path")
-          .style("opacity", 0.3);
-
-      // Then highlight only those that are an ancestor of the current segment.
-      vis.selectAll("#sunburstchart path")
-          .filter(function(node) {
-                    return (sequenceArray.indexOf(node) >= 0);
-                  })
-          .style("opacity", 1);
     }
 
     // Restore everything to full opacity when moving off the visualization.
     function mouseleave(d) {
-
+      if(!clickedOnSurburst){
       // Hide the breadcrumb trail
-      d3.select("#trail")
-          .style("visibility", "hidden");
+        d3.select("#trail")
+            .style("visibility", "hidden");
 
-      // Deactivate all segments during transition.
-      d3.selectAll("#sunburstchart path").on("mouseover", null);
+        // Deactivate all segments during transition.
+        d3.selectAll("#sunburstchart path").on("mouseover", null);
 
-      // Transition each segment to full opacity and then reactivate it.
-      d3.selectAll("#sunburstchart path")
-          .transition()
-          .duration(1000)
-          .style("opacity", 1)
-          .each("end", function() {
-                  d3.select(this).on("mouseover", mouseover);
-                });
+        // Transition each segment to full opacity and then reactivate it.
+        d3.selectAll("#sunburstchart path")
+            .transition()
+            .duration(1000)
+            .style("opacity", 1)
+            .each("end", function() {
+                    d3.select(this).on("mouseover", mouseover);
+                  });
 
-      d3.select("#explanation")
-          .style("visibility", "hidden");
+        d3.select("#explanation")
+            .style("visibility", "hidden");
+      }
     }
+
+    function mouseclick(d){
+      clickedOnSurburst =!clickedOnSurburst
+      if(clickedOnSurburst){
+        var higlightedItemsInSunburst = []
+        var sunburstAncestors = getAncestors(d)
+        for (var i = sunburstAncestors.length - 1; i >= 0; i--) {
+          higlightedItemsInSunburst.push(sunburstAncestors[i]["name"].replace(new RegExp('_', 'g'), "-"))
+        }
+        d3.selectAll(".chart").selectAll(".layer").transition()
+          .duration(250)
+          .attr("opacity", function(d, j) {
+            if (higlightedItemsInSunburst.indexOf(d.key) > -1){
+              return 1;
+            } else {
+              return 0.25;
+            }
+          })
+
+          markersArray.forEach(function(item){
+            if (higlightedItemsInSunburst.indexOf(item.key) > -1){
+              item.marker.setStyle({
+                opacity: 1,
+                fillOpacity: 0.2
+              });
+            } else {
+              item.marker.setStyle({
+                opacity: 0,
+                fillOpacity: 0
+              });
+            } 
+          })
+      } else {
+        d3.selectAll(".chart").selectAll(".layer").transition()
+          .duration(250)
+          .attr("opacity", function(d, j) {
+            return 1;
+          })
+          markersArray.forEach(function(item){
+            item.marker.setStyle({
+              opacity: 1,
+              fillOpacity: 0.2
+            });
+          })
+      }
+    }
+
+
+
 
     // Given a node in a partition layout, return an array of all of its ancestor
     // nodes, highest first, but excluding the root.

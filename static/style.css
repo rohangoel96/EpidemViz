@@ -32,7 +32,7 @@ legend{
 }
 
 #data-type label{
-	margin-bottom: 5px;
+	padding-bottom: 5px;
 }
 
 #left-pane label input{
@@ -48,6 +48,10 @@ legend{
 
 #entities-container{
 	padding-right: 0;
+}
+
+.enties-label{
+	text-shadow: 1px 1px 0 #777777;
 }
 
 .left-pane-element-container{

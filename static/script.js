@@ -30,14 +30,26 @@ var confidenceFilter = 0.2;
 var dsv = d3.dsv(";", "text/plain"); //seperator in CSV = ;
 var articleData;
 var DHSOrder = "DHS";
+var sunburstColorsCombined;
+var NotChromeBrowser = false;
 
 /*
     Do the following when the page loads for the first time
  */
 $(document).ready(function() {
+
+    if(!(/chrom(e|ium)/.test(navigator.userAgent.toLowerCase()))){
+        NotChromeBrowser = true;
+        $(".data-file-icon").remove();
+        if (window.confirm('This app has been optimized for Google Chrome and we recommend using it.\nClick OK to install Google Chrome or CANCEL to proceed loading this app without Chrome')) 
+            {
+                window.location.href='https://www.google.com/chrome/browser/index.html';
+            };
+        }
+
     dsv("/static/data/"+ARTICLE_FILE, function(error, data) {
         articleData = processedArticleData(data);
-        plotter();
+        plotter(true);
         map = L.map('map').setView([35, 10], 1);
         map.on('zoomend', mapZoomHandler)
 
@@ -78,7 +90,7 @@ $(document).ready(function() {
     Handles the building of timeline and map
     and is triggered if there is any change in data
  */
-function plotter() {
+function plotter(init=false) {
     dsv("/static/data/"+OFFICIAL_FILE, function(error, officialData) {
         if (error) throw error;
         
@@ -99,24 +111,29 @@ function plotter() {
 
             entityKeys = processedCombinedData[4]; //entity values should be decided from the combined data
             // colorrange = generateDistinctColors(entityKeys.length);
-            colorrange = colores_google(entityKeys.length); //colors for each of the entity
+            // colorrange = colores_google(entityKeys.length); //colors for each of the entity
 
             chartBoxWidth = $(".panel-group").width() - margin.left - margin.right - 40;
-
-            //configuration object for the geographical map
-            var mapConfig = {
-                combinedData: processedCombinedData[0],
-                officialData: processedOfficialData[0],
-                unofficialData: processedUnofficialData[0],
-                colorrange: colorrange,
-                entityKeys: entityKeys,
-            };
 
             var sunburstData = {
                 BOTH:processedCombinedData[5],
                 OFFICIAL:processedOfficialData[5],
                 UNOFFICIAL:processedUnofficialData[5]
             }
+
+            if(init){
+              sunburstColorsCombined = processedUnofficialData[5][1]  
+            }
+            
+            //configuration object for the geographical map
+            var mapConfig = {
+                combinedData: processedCombinedData[0],
+                officialData: processedOfficialData[0],
+                unofficialData: processedUnofficialData[0],
+                // colorrange: colorrange,
+                entityKeys: entityKeys,
+                sunburstData: sunburstData
+            };
 
             //configuration object for the first timeline
             var timeline1Config = {
@@ -127,7 +144,7 @@ function plotter() {
                 height: timelineHeight - margin.top - margin.bottom,
                 dataDateDict: processedOfficialData[2],
                 dates : processedOfficialData[3],
-                colorrange: colorrange,
+                // colorrange: colorrange,
                 entityKeys: entityKeys,
                 dataDateDictHover: {
                     official: processedOfficialData[2],
@@ -146,7 +163,7 @@ function plotter() {
                 height: timelineHeight - margin.top - margin.bottom,
                 dataDateDict: processedUnofficialData[2],
                 dates : processedUnofficialData[3],
-                colorrange: colorrange,
+                // colorrange: colorrange,
                 entityKeys: entityKeys,
                 dataDateDictHover: {
                     official: processedOfficialData[2],
@@ -155,12 +172,6 @@ function plotter() {
                 mapConfig: mapConfig,
                 sunburstData: sunburstData
             };
-
-            drawTimeline(timeline1Config); //draw the timeline 1
-            drawTimeline(timeline2Config); //draw the timeline 2
-            geoMapHandler(mapConfig, false); //draw the map
-            sunburstHandler(sunburstData, false);
-
 
             //handle selection of official/unofficial/both data on the geo map
             $(".data-file").change(function() {
@@ -206,11 +217,10 @@ function plotter() {
             //         drawTimeline(timeline2Config);
             //     }
             // })
-
             //update colors for entities in the left pane
             $(".enties-label").css("color", "black")
             $( "label[id^='label_"+$("input:radio[name=data-type]:checked").val()+"']").each(function(ind, item) {
-                $(this).css("color", colorrange[entityKeys.indexOf($(this).attr("id").split("_")[2])]);
+                $(this).css("color", sunburstColorsCombined[$(this).attr("id").split("_")[2].replace(new RegExp('-', 'g'), "_")]);
             })
             sortable('.sortable')[0].addEventListener('sortupdate', function(e) {
                 var DHSOrderTemp = ""
@@ -220,6 +230,19 @@ function plotter() {
                 DHSOrder = DHSOrderTemp;
                 sunburstHandler(sunburstData);
             });
+
+            drawTimeline(timeline1Config); //draw the timeline 1
+            drawTimeline(timeline2Config); //draw the timeline 2
+            if (trimStartDate!= -1 || trimEndDate!=-1){
+                geoMapHandler(mapConfig, true); //draw the map
+                sunburstHandler(sunburstData, true);
+                timelineUpdateWithZoom(timeline1Config)
+                timelineUpdateWithZoom(timeline2Config)
+            } else {
+                geoMapHandler(mapConfig, false); //draw the map
+                sunburstHandler(sunburstData, false);
+            }
+
         });
     });
 
@@ -233,7 +256,7 @@ function plotter() {
  */
 function geoMapHandler(mapConfig, trimmingBool=true) {
     var entityKeys = mapConfig.entityKeys;
-    var colorrange = mapConfig.colorrange;
+    var sunburstData = mapConfig.sunburstData;
     var data, startDate, endDate;
 
     //select which data to display on map
@@ -322,9 +345,9 @@ function geoMapHandler(mapConfig, trimmingBool=true) {
                     if(parseFloat(item.confidence[ind]) >= confidenceFilter){
                         var article = articleData[item.article[ind]]
                         var circle = L.shapeMarker(location, {  // https://github.com/rowanwins/Leaflet.SvgShapeMarkers
-                            shape: item.reliability[ind] == "official" ? "circle" : "diamond", //select shape accordingly
-                            color: colorrange[entityKeys.indexOf(item.key)],
-                            fill: colorrange[entityKeys.indexOf(item.key)],
+                            shape: NotChromeBrowser ? "circle" : (item.reliability[ind] == "official" ? "circle" : "diamond"), //select shape accordingly
+                            color: sunburstColorsCombined[item.key.replace(new RegExp('-', 'g'), "_")],
+                            fill: sunburstColorsCombined[item.key.replace(new RegExp('-', 'g'), "_")],
                             radius: giveRadiusForMarkersZoom(),
                             weight: 1
                         })
@@ -349,8 +372,8 @@ function geoMapHandler(mapConfig, trimmingBool=true) {
                 if (item.date >= startDate && item.date <= endDate && item.location.length > 0) {
                     item.location.forEach(function(location, ind) {
                         if(parseFloat(item.confidence[ind]) >= confidenceFilter && getDistanceFromLatLonInKm(location, popLocation) < getPopUpTriggerDistance()){
-                           var iconShape = '<i class="icon-'+(item.reliability[ind] == "official" ? "circle" : "rhombus")+'"></i>'
-                           popupText += "<span style='color:"+colorrange[entityKeys.indexOf(item.key)]+"'>"+iconShape+"</span> "+"Date: "+timeDisplayFormat(item.date)+" ; Conf.: "+parseFloat(item.confidence[ind]).toFixed(2)+" ; <a href='javascript:void(0);' onclick='markerModalHandler(\""+item.article[ind]+"\");return false;'>View <i class='icon-article'></i></a><br>"
+                           var iconShape = '<i class="icon-'+(NotChromeBrowser ? "circle" : (item.reliability[ind] == "official" ? "circle" : "rhombus"))+'"></i>'
+                           popupText += "<span style='color:"+sunburstColorsCombined[item.key.replace(new RegExp('-', 'g'), "_")]+"'>"+iconShape+"</span> "+"Date: "+timeDisplayFormat(item.date)+" ; Conf.: "+parseFloat(item.confidence[ind]).toFixed(2)+" ; <a href='javascript:void(0);' onclick='markerModalHandler(\""+item.article[ind]+"\");return false;'>View <i class='icon-article'></i></a><br>"
                         }
                     })
                 }
@@ -363,7 +386,7 @@ function geoMapHandler(mapConfig, trimmingBool=true) {
             }
         });
     }
-    
+    map.closePopup();
     lassoResetHandler();
 }
 
@@ -616,7 +639,7 @@ function appendEntities(containerID, objList, idText) {
                                         value: idText + item,
                                         class: 'entities-checkbox',
                                         type:  'checkbox',
-                                        onclick: 'plotter(this)'
+                                        onclick: 'plotter()'
                                 })
                         )  
                 );
@@ -634,7 +657,7 @@ function drawTimeline(config) {
     width = config.width;
     var height = config.height;
     var data = config.data;
-    var colorrange = config.colorrange;
+    var sunburstData = config.sunburstData;
     var divID = config.divID;
     var datearray = [];
 
@@ -701,7 +724,7 @@ function drawTimeline(config) {
         .enter().append("path")
         .attr("class", "layer")
         .attr("d", function(d) { return area(d.values); })
-        .style("fill", function(d, i) {return colorrange[entityKeys.indexOf(d.key)]; });
+        .style("fill", function(d, i) {return sunburstColorsCombined[d.key.replace(new RegExp('-', 'g'), "_")]; });
 
     svg.append("g")
         .attr("class", "x-axis")
@@ -1172,7 +1195,7 @@ function lassoTimelineHighlight(items){
                 .attr("y2", timelineHeight - 18)
                 .style("stroke-width", 1)
                 .style("stroke-dasharray", ("8, 8"))
-                .style("stroke",item.key ? colorrange[entityKeys.indexOf(item.key)]: "#aaa")
+                .style("stroke",item.key ? sunburstColorsCombined[item.key.replace(new RegExp('-', 'g'), "_")]: "#aaa")
                 .style("fill", "none");
         } else if (item.reliability == "unofficial"){
             svg2.append("line")
@@ -1183,7 +1206,7 @@ function lassoTimelineHighlight(items){
                 .attr("y2", timelineHeight - 18)
                 .style("stroke-width", 1)
                 .style("stroke-dasharray", ("8, 8"))
-                .style("stroke",item.key ? colorrange[entityKeys.indexOf(item.key)]: "#aaa")
+                .style("stroke",item.key ? sunburstColorsCombined[item.key.replace(new RegExp('-', 'g'), "_")]: "#aaa")
                 .style("fill", "none");
         } else {
             console.log("rss_reliability error")
@@ -1375,7 +1398,7 @@ function sunburstHandler(sunburstData, trimmingBool=true){
             reqSunburstDataTrimmed.push([key, countForCurrentKey])
         }
     }
-    initSunburst(reqSunburstDataTrimmed, sunburstData[mapDataSelector][1])
+    initSunburst(reqSunburstDataTrimmed, sunburstColorsCombined)
 }
 
 function getPopUpTriggerDistance(){

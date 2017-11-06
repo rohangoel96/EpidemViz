@@ -108,8 +108,8 @@ function colores_google(n) {
 
 function sunburst_colors(n){
 	//http://htmlcolorcodes.com/
-	var colores_s =["#800080", "#FF00FF", "#000080", "#0000FF", "#008080", "#00FFFF", "#008000", "#00FF00", "#808000", "#FFFF00", "#800000", "#FF0000", "#000000", "#808080", "#C0C0C0", "#FFFFFF"];
-	if(n<=16){
+	var colores_s =["#FF0000", "#FFFF00", "#808000", "#FF5900", "#0000FF", "#222222", "#800080", "#008000", "#E6334C", "#800000", "#008080", "#999999", "#F4A209", "#5296F1", "#000080", "#00FF00", "#454545", "#FF00FF", "#00FFFF"];
+	if(n<=20){
 		return colores_s.slice(0, n);	
 	} else {
 		return generateDistinctColors(n)

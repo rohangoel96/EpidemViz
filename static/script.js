@@ -243,6 +243,7 @@ function plotter(init=false) {
                 sunburstHandler(sunburstData, false);
             }
 
+            $(".se-pre-con").fadeOut("slow");;
         });
     });
 

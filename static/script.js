@@ -78,6 +78,7 @@ $(document).ready(function() {
             $($(".popover-title")[0]).html("Confidence Filter >= "+confidenceFilter);
             $("#pop-over-slider").val(confidenceFilter);
         })
+
         sortable('.sortable', {
             hoverClass: 'is-hovered'
         }); //https://github.com/lukasoppermann/html5sortable
@@ -1351,15 +1352,24 @@ function confidenceSlider(val) {
     plotter();
 }
 
+function confidenceSliderSliding(val){
+    $($(".popover-title")[0]).html("Confidence Filter >= "+val);
+}
+
 
 function markerModalHandler(articleID){
     var article = articleData[articleID];
     $("#markerPopUpModal .modal-content").empty();
+    $("#markerPopUpModal .modal-content").append("<button onclick='closeMarkerModal();' class='close' aria-label='Close' ><span aria-hidden='true'>&times;</span></button>")
     $("#markerPopUpModal .modal-content").append("<h2>"+article["B"]+"</h2>")
     $("#markerPopUpModal .modal-content").append("<h4>"+article["D"]+"</h4>")
     $("#markerPopUpModal .modal-content").append("<a href='"+article["C"]+"' target='_blank'><h4>Document Source</h4></a>")
     $("#markerPopUpModal .modal-content").append("<p>"+article["E"]+"</p>")
     $("#markerPopUpModal").modal("show")
+}
+
+function closeMarkerModal(){
+    $('#markerPopUpModal').modal('hide');
 }
 
 function fileModalHandler(){

@@ -30,7 +30,7 @@
                 <a href="#" class="icon-svg" id="icon-heatmap" onclick="heatMapHandler(true)"><!-- <i class="icon-heatmap"></i> --></a>
                 <hr>
                 <a href="#" class="icon-svg" id="icon-slider"  rel="popover" data-content="
-                <input id='pop-over-slider' type='range' min='0' max='1' step='0.1' onchange='confidenceSlider(this.value)' value='0.2'>" data-html="true" data-original-title="Confidence Filter >= 0.2" data-placement="right" data-container="body"><i class="icon-slider"></i></a>
+                <input id='pop-over-slider' type='range' min='0' max='1' step='0.1' onchange='confidenceSlider(this.value)' value='0.2' oninput='confidenceSliderSliding(this.value)'>" data-html="true" data-original-title="Confidence Filter >= 0.2" data-placement="right" data-container="body"><i class="icon-slider"></i></a>
                 <a href="#" class="icon-svg" id="icon-upload" onclick="fileModalHandler()"><i class="icon-upload"></i></a>
             </div>
             <span class="col-md-1"></span>
@@ -131,7 +131,11 @@
             <div class="modal-dialog modal-sm" role="document">
                 <div class="modal-content">
                     <div id="sidebar">
+                        <button type="button" class="close" aria-label="Close" onclick="javascript:$('#sunburstLegenfPopUpModal').modal('hide');">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
                         <div id="legend"></div>
+
                     </div>
                 </div>
             </div>
@@ -146,6 +150,9 @@
         <div class="modal fade bs-example-modal-lg" id="fileSelectModal" tabindex="1" role="dialog" aria-labelledby="myLargeModalLabel2">
             <div class="modal-dialog modal-sm" role="document">
                 <div class="modal-content" id="file-modal">
+                    <button type="button" class="close" aria-label="Close" onclick="javascript:$('#fileSelectModal').modal('hide');">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
                     <form action="/upload/" method="post" enctype = "multipart/form-data">
                         <span class="file-element">
                             <label class="btn btn-warning file-loader-button" for="officialCSV">

@@ -14,7 +14,7 @@
             <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
                 <ul class="nav navbar-nav">
                     <li>
-                        <span style="display: inline-block; color: rgb(255, 255, 255);">Hi {{ current_user.username }} !</span><a href="{{ url_for('user.logout') }}" style="display: inline-block;color: white">Logout</a>
+                        <!-- <span style="display: inline-block; color: rgb(255, 255, 255);">Hi {{ current_user.username }} !</span><a href="{{ url_for('user.logout') }}" style="display: inline-block;color: white">Logout</a> -->
                     </li>
                 </ul>
             </div>
@@ -24,13 +24,13 @@
         <div id="top-row" class="row">
             <div id="toolbar" class="icon-bar">
                 <a href="#" class="icon-svg" id="icon-lasso" onclick="lassoEnableHandler(this);"><i class="icon-lasoo2"></i></a> 
-                <a href="#" class="icon-svg" id="icon-reset" onclick="lassoResetHandler(this)"><i class="icon-reset"></i></a> 
+                <a href="#" class="icon-svg" id="icon-reset" onclick="lassoResetHandler(this);map.setView([35, 10], 1);"><i class="icon-reset"></i></a> 
                 <hr>
                 <a href="#" class="icon-svg active" id="icon-points" onclick="heatMapHandler(false)"><i class="icon-points"></i></a> 
                 <a href="#" class="icon-svg" id="icon-heatmap" onclick="heatMapHandler(true)"><!-- <i class="icon-heatmap"></i> --></a>
                 <hr>
                 <a href="#" class="icon-svg" id="icon-slider"  rel="popover" data-content="
-                <input id='pop-over-slider' type='range' min='0' max='1' step='0.1' onchange='confidenceSlider(this.value)' value='0.2' oninput='confidenceSliderSliding(this.value)'>" data-html="true" data-original-title="Confidence Filter >= 0.2" data-placement="right" data-container="body"><i class="icon-slider"></i></a>
+                <input id='pop-over-slider' type='range' min='0' max='1' step='0.1' onchange='confidenceSlider(this.value)' value='0.2' oninput='confidenceSliderSliding(this.value)'>" data-html="true" data-original-title="Confidence Filter >= 0.2" data-placement="right" data-container="body"><i class="icon-slider"><span id="current-slider-val"></span></i></a>
                 <a href="#" class="icon-svg" id="icon-upload" onclick="fileModalHandler()"><i class="icon-upload"></i></a>
             </div>
             <span class="col-md-1"></span>
@@ -46,7 +46,7 @@
                     <div class="left-pane-element" id="data-type">
                         <fieldset>
                             <legend>Data Type</legend>
-                            <ul class="sortable">
+                            <ul class="sortable" id="items">
                                 <li><label><input type="radio" value="diseases" onclick="plotter(this)" name="data-type" checked>Diseases<span class="grippy"></span></label></li>
                                 <li><label><input type="radio" value="species" onclick="plotter(this)" name="data-type">Hosts<span class="grippy"></span></label></li>
                                 <li><label><input type="radio" value="symptoms" onclick="plotter(this)" name="data-type">Symptoms<span class="grippy"></span></label></li>

@@ -41,11 +41,8 @@ $(document).ready(function() {
     if(!(/chrom(e|ium)/.test(navigator.userAgent.toLowerCase()))){
         NotChromeBrowser = true;
         $(".data-file-icon").remove();
-        if (window.confirm('This app has been optimized for Google Chrome and we recommend using it.\nClick OK to install Google Chrome or CANCEL to proceed loading this app without Chrome')) 
-            {
-                window.location.href='https://www.google.com/chrome/browser/index.html';
-            };
-        }
+        window.alert("This app has been optimized for Google Chrome and we recommend using it!")
+    }
 
     dsv("/static/data/"+ARTICLE_FILE, function(error, data) {
         articleData = processedArticleData(data);
@@ -78,10 +75,6 @@ $(document).ready(function() {
             $($(".popover-title")[0]).html("Confidence Filter >= "+confidenceFilter);
             $("#pop-over-slider").val(confidenceFilter);
         })
-
-        sortable('.sortable', {
-            hoverClass: 'is-hovered'
-        }); //https://github.com/lukasoppermann/html5sortable
     })
 
 });
@@ -223,13 +216,13 @@ function plotter(init=false) {
             $( "label[id^='label_"+$("input:radio[name=data-type]:checked").val()+"']").each(function(ind, item) {
                 $(this).css("color", sunburstColorsCombined[$(this).attr("id").split("_")[2].replace(new RegExp('-', 'g'), "_")]);
             })
-            sortable('.sortable')[0].addEventListener('sortupdate', function(e) {
-                var DHSOrderTemp = ""
-                e.detail.newStartList.forEach(function(ele){
-                    DHSOrderTemp+= $($($(ele).children(":first")[0])[0]).text()[0]
-                });
-                DHSOrder = DHSOrderTemp;
-                sunburstHandler(sunburstData);
+
+            var sortable = Sortable.create(document.getElementById('items'), {
+                onUpdate: function (/**Event*/evt) {
+                    var newOrder = evt.to.children
+                    DHSOrder = $($($(newOrder[0]).children(":first")[0])[0]).text()[0] + $($($(newOrder[1]).children(":first")[0])[0]).text()[0] + $($($(newOrder[2]).children(":first")[0])[0]).text()[0];
+                    sunburstHandler(sunburstData);
+                },
             });
 
             drawTimeline(timeline1Config); //draw the timeline 1
@@ -244,7 +237,7 @@ function plotter(init=false) {
                 sunburstHandler(sunburstData, false);
             }
 
-            $(".se-pre-con").fadeOut("slow");;
+            $(".se-pre-con").fadeOut("slow");; //preloader
         });
     });
 
@@ -260,7 +253,7 @@ function geoMapHandler(mapConfig, trimmingBool=true) {
     var entityKeys = mapConfig.entityKeys;
     var sunburstData = mapConfig.sunburstData;
     var data, startDate, endDate;
-
+    $("#current-slider-val").text(confidenceFilter)
     //select which data to display on map
     if (mapDataSelector == "OFFICIAL") {
         data = mapConfig.officialData;
@@ -1166,7 +1159,6 @@ function lassoResetHandler() {
     lasso.clear();
     lassoPolygon = null;
     d3.selectAll(".chart svg").selectAll(".date-lasso-line").remove()
-    // map.setView([35, 10], 1)
 
     if ($("#icon-lasso").hasClass("active")) {
         lasso.mode(FreeDraw.CREATE + FreeDraw.EDIT);

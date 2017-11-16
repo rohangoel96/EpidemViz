@@ -109,8 +109,10 @@ function colores_google(n) {
 function sunburst_colors(n){
 	//http://htmlcolorcodes.com/
 	var colores_s =["#FF0000", "#FFFF00", "#808000", "#FF5900", "#0000FF", "#222222", "#800080", "#008000", "#E6334C", "#800000", "#008080", "#999999", "#F4A209", "#5296F1", "#000080", "#00FF00", "#454545", "#FF00FF", "#00FFFF"];
+	var kelly_colors = ['#F3C300', '#875692', '#F38400', '#A1CAF1', '#BE0032', '#C2B280', '#848482', '#008856', '#E68FAC', '#0067A5', '#F99379', '#604E97', '#F6A600', '#B3446C', '#DCD300', '#882D17', '#8DB600', '#654522', '#E25822', '#2B3D26']
+	var colores_g = ["#3366cc", "#dc3912", "#ff9900", "#109618", "#990099", "#632c04", "#dd4477", "#66aa00", "#b82e2e", "#5a6570", "#994499", "#40d1c0", "#aaaa11", "#6633cc", "#e67300", "#8b0707", "#651067", "#329262", "#015114", "#3b3eac"];
 	if(n<=20){
-		return colores_s.slice(0, n);	
+		return colores_g.slice(0, n);	
 	} else {
 		return generateDistinctColors(n)
 	}

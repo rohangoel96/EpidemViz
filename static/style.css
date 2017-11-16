@@ -50,9 +50,9 @@ legend{
 	padding-right: 0;
 }
 
-.enties-label{
+/*.enties-label{
 	text-shadow: 1px 1px 0 #777777;
-}
+}*/
 
 .left-pane-element-container{
 	padding-left: 0px;
@@ -361,4 +361,11 @@ span.grippy::after {
 	height: 100%;
 	z-index: 9999;
 	background: url(preloader.gif) center no-repeat #fff;
+}
+
+#current-slider-val{
+	font-size: 12px;
+    position: absolute;
+    top: 365px;
+    left: 30px;
 }

@@ -62,9 +62,9 @@ def viz():
     article_file = "articles.csv"
     if session.get('official'):
         official_file = session["official"]
-    if session.get('official'):
+    if session.get('unofficial'):
         unofficial_file = session["unofficial"]
-    if session.get('official'):
+    if session.get('article'):
         article_file = session["article"]
 
     return render_template('viz.html', OFFICIAL_FILE=official_file, UNOFFICIAL_FILE=unofficial_file, ARTICLE_FILE=article_file)

@@ -57,35 +57,35 @@ user_manager = UserManager(db_adapter, app)     # Initialize Flask-User
 @app.route("/viz")
 # @login_required
 def viz():
-    official_file = "official.csv"
-    unofficial_file = "un_official.csv"
-    article_file = "articles.csv"
-    if session.get('official'):
-        official_file = session["official"]
-    if session.get('unofficial'):
-        unofficial_file = session["unofficial"]
-    if session.get('article'):
-        article_file = session["article"]
+    # official_file = "official.csv"
+    # unofficial_file = "un_official.csv"
+    # article_file = "articles.csv"
+    # if session.get('official'):
+    #     official_file = session["official"]
+    # if session.get('unofficial'):
+    #     unofficial_file = session["unofficial"]
+    # if session.get('article'):
+    #     article_file = session["article"]
 
-    return render_template('viz.html', OFFICIAL_FILE=official_file, UNOFFICIAL_FILE=unofficial_file, ARTICLE_FILE=article_file)
+    return render_template('viz.html')
 
 
-@app.route('/upload/', methods=['GET', 'POST'])
-def upload_file():
-    if request.method == 'POST':
-        file = request.files['official']
-        if file:
-            filename = secure_filename(file.filename)
-            file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
-            session["official"] = filename
+# @app.route('/upload/', methods=['GET', 'POST'])
+# def upload_file():
+#     if request.method == 'POST':
+#         file = request.files['official']
+#         if file:
+#             filename = secure_filename(file.filename)
+#             file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+#             session["official"] = filename
 
-        file = request.files['unofficial']
-        if file:
-            filename = secure_filename(file.filename)
-            file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
-            session["unofficial"] = filename
+#         file = request.files['unofficial']
+#         if file:
+#             filename = secure_filename(file.filename)
+#             file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+#             session["unofficial"] = filename
     
-    return redirect(url_for('viz'))
+#     return redirect(url_for('viz'))
 
 
 @app.route("/")

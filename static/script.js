@@ -32,7 +32,12 @@ var articleData;
 var DHSOrder = "DHS";
 var sunburstColorsCombined;
 var NotChromeBrowser = false;
-
+var ARTICLE_FILE = "/static/data/articles.csv"
+var OFFICIAL_FILE = "/static/data/official.csv"
+var UNOFFICIAL_FILE = "/static/data/un_official.csv"
+var ARTICLE_FILE_NAME = "articles.csv"
+var OFFICIAL_FILE_NAME = "official.csv"
+var UNOFFICIAL_FILE_NAME = "un_official.csv"
 /*
     Do the following when the page loads for the first time
  */
@@ -44,7 +49,7 @@ $(document).ready(function() {
         window.alert("This app has been optimized for Google Chrome and we recommend using it!")
     }
 
-    dsv("/static/data/"+ARTICLE_FILE, function(error, data) {
+    dsv(ARTICLE_FILE, function(error, data) {
         articleData = processedArticleData(data);
         plotter(true);
         map = L.map('map').setView([35, 10], 1);
@@ -85,20 +90,31 @@ $(document).ready(function() {
     and is triggered if there is any change in data
  */
 function plotter(init=false) {
-    dsv("/static/data/"+OFFICIAL_FILE, function(error, officialData) {
+    $("#fileSelectModal").modal("hide")
+    dsv(OFFICIAL_FILE, function(error, officialData) {
         if (error) throw error;
         
         var dataType = $("input:radio[name=data-type]:checked").val();
-        var processedOfficialData = processData(officialData, dataType);
+        try{
+            var processedOfficialData = processData(officialData, dataType);
+        }
+        catch(err){
+            alert("Can't process OFFICIAL FILE.\nMaybe the file format is not correct. Upload another file or try again")
+        }
 
         //hide the entity for the unselected data types
         $(".entity-container").each(function(ind, div) {
             $(div).css("display", ($(div).attr("id") == "entity-" + dataType? "block" : "none"));
         })
 
-        dsv("/static/data/"+UNOFFICIAL_FILE, function(error, unofficialData) {
+        dsv(UNOFFICIAL_FILE, function(error, unofficialData) {
             if (error) throw error;
-            var processedUnofficialData = processData(unofficialData, dataType);
+            try{
+                var processedUnofficialData = processData(unofficialData, dataType);    
+            }
+            catch(err){
+                alert("Can't process UNOFFICIAL FILE.\nMaybe the file format is not correct. Upload another file or try again")
+            }
             
             var combinedData = officialData.concat(unofficialData); //combined official and unofficial data
             var processedCombinedData = processData(combinedData, dataType);
@@ -1365,15 +1381,43 @@ function closeMarkerModal(){
 }
 
 function fileModalHandler(){
-    $("#official_upload_label").html(OFFICIAL_FILE);
-    $("#unofficial_upload_label").html(UNOFFICIAL_FILE);
+    $("#official_upload_label").html(OFFICIAL_FILE_NAME);
+    $("#unofficial_upload_label").html(UNOFFICIAL_FILE_NAME);
     $("#fileSelectModal").modal("show")
 }
 
 function fileLoadHandler(fileType, fileName){
     $("#"+fileType+"_upload_label").html(fileName)
-}
+    if (fileType == "official") {
+        var file = document.querySelector('#officialCSV').files[0];
+        var reader  = new FileReader();
 
+        reader.addEventListener("load", function () {
+            OFFICIAL_FILE = reader.result
+            OFFICIAL_FILE_NAME =fileName;
+            plotter();
+        }, false);
+
+        if (file) {
+            reader.readAsDataURL(file);
+        }
+    } else if (fileType == "unofficial"){
+        var file = document.querySelector('#unofficialCSV').files[0];
+        var reader  = new FileReader();
+
+        reader.addEventListener("load", function () {
+            UNOFFICIAL_FILE = reader.result
+            UNOFFICIAL_FILE_NAME =fileName;
+            plotter();
+        }, false);
+
+        if (file) {
+            reader.readAsDataURL(file);
+        }
+    } else {
+        console.log("[ERROR] What are you uploading?")
+    }
+}
 
 function sunburstHandler(sunburstData, trimmingBool=true){
     var startDate, endDate;

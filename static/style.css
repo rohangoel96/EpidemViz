@@ -185,7 +185,8 @@ legend{
 }
 
 .leaflet-container {
-    background-color: rgb(170, 211, 223) !important
+	background-color: #8BD1E3 !important
+    /*background-color: rgb(170, 211, 223) !important*/
 }
 
 .collapseTimeline{

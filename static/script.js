@@ -1,4 +1,4 @@
-var fillInMissingDates = false;  //fill in missing dates in the data
+var fillInMissingDates = true;  //fill in missing dates in the data
 var margin = {top: 0, right: 0, bottom: 20, left: 0}; //margin for timelines
 var timeParseFormat = d3.time.format("%Y-%m-%d"); //time format in csv files
 var timeDisplayFormat = d3.time.format("%d/%m/%y"); //time format to be displayed on screen
@@ -91,33 +91,26 @@ $(document).ready(function() {
  */
 function plotter(init=false) {
     $("#fileSelectModal").modal("hide")
+    if(init){
+    	$("#entity-species").empty()
+		$("#entity-diseases").empty()
+		$("#entity-symptoms").empty()
+    }
     dsv(OFFICIAL_FILE, function(error, officialData) {
         if (error) throw error;
-        
-        var dataType = $("input:radio[name=data-type]:checked").val();
-        try{
-            var processedOfficialData = processData(officialData, dataType);
-        }
-        catch(err){
-            alert("Can't process OFFICIAL FILE.\nMaybe the file format is not correct. Upload another file or try again")
-        }
-
-        //hide the entity for the unselected data types
-        $(".entity-container").each(function(ind, div) {
-            $(div).css("display", ($(div).attr("id") == "entity-" + dataType? "block" : "none"));
-        })
-
         dsv(UNOFFICIAL_FILE, function(error, unofficialData) {
             if (error) throw error;
-            try{
-                var processedUnofficialData = processData(unofficialData, dataType);    
-            }
-            catch(err){
-                alert("Can't process UNOFFICIAL FILE.\nMaybe the file format is not correct. Upload another file or try again")
-            }
-            
+            var dataType = $("input:radio[name=data-type]:checked").val();
+            //calculate combined data first because active keys are calculated in processData for combined data
+            //this is because entities should be populated from combined data
             var combinedData = officialData.concat(unofficialData); //combined official and unofficial data
-            var processedCombinedData = processData(combinedData, dataType);
+            var processedCombinedData = processData(combinedData, dataType, init, true);
+	        var processedOfficialData = processData(officialData, dataType, init);
+            var processedUnofficialData = processData(unofficialData, dataType, init);
+           	//hide the entity for the unselected data types
+	        $(".entity-container").each(function(ind, div) {
+	            $(div).css("display", ($(div).attr("id") == "entity-" + dataType? "block" : "none"));
+	        })
 
             entityKeys = processedCombinedData[4]; //entity values should be decided from the combined data
             // colorrange = generateDistinctColors(entityKeys.length);
@@ -132,7 +125,7 @@ function plotter(init=false) {
             }
 
             if(init){
-              sunburstColorsCombined = processedUnofficialData[5][1]  
+              sunburstColorsCombined = processedCombinedData[5][1]
             }
             
             //configuration object for the geographical map
@@ -284,8 +277,8 @@ function geoMapHandler(mapConfig, trimmingBool=true) {
     heatMap.clearLayers();
     markersArray = [];
     heatMapMarkers = [];
-
-    L.tileLayer('http://{s}.tile.osm.org/{z}/{x}/{y}.png', {
+    // L.tileLayer('http://{s}.tile.osm.org/{z}/{x}/{y}.png', {
+     L.tileLayer('https://api.tiles.mapbox.com/v4/mapbox.run-bike-hike/{z}/{x}/{y}.png?access_token=pk.eyJ1Ijoicm9oYW5nb2VsOTYiLCJhIjoiY2phbDloNWtpM253ODJ3bG9mNWdiYzQwMiJ9.jZJvg-axeL9dDxyvGVGfkQ', {
         // attribution: '&copy; <a href="http://osm.org/copyright">OpenStreetMap</a> contributors',
         noWrap: true,
         maxZoom: 8,
@@ -418,7 +411,7 @@ function processedArticleData(data){
  * @param  {data} array
  * @param  {dataType} string
  */
-function processData(data, dataType) {
+function processData(data, dataType, init, combinedDataBool=false) {
     var species_host = [],
         diseases = [],
         symptoms = []
@@ -443,9 +436,13 @@ function processData(data, dataType) {
         "SHD": {}
     }, sunburstUniqueItems = [], uniq_disease = [], uniq_host = [], uniq_symptoms = [];
 
-    appendEntities("#entity-species", species_host, 'species_');
-    appendEntities("#entity-diseases", diseases, 'diseases_');
-    appendEntities("#entity-symptoms", symptoms, 'symptoms_');
+    
+    if(init && combinedDataBool){
+    	appendEntities("#entity-species", species_host, 'species_');
+    	appendEntities("#entity-diseases", diseases, 'diseases_');
+    	appendEntities("#entity-symptoms", symptoms, 'symptoms_');
+    }
+
 
     // default selection
     $('input[id^="disease"]').attr('checked', true);
@@ -477,7 +474,7 @@ function processData(data, dataType) {
         }
         allKeys.push(objList[i].name.split(""+dataType+"_")[1])
     }
-        
+    
     if (fillInMissingDates){
         // calculate the minimum and the maximum dates
         // and then calculate and fill in the missing dates in between
@@ -1395,7 +1392,7 @@ function fileLoadHandler(fileType, fileName){
         reader.addEventListener("load", function () {
             OFFICIAL_FILE = reader.result
             OFFICIAL_FILE_NAME =fileName;
-            plotter();
+            plotter(init=true);
         }, false);
 
         if (file) {
@@ -1408,7 +1405,7 @@ function fileLoadHandler(fileType, fileName){
         reader.addEventListener("load", function () {
             UNOFFICIAL_FILE = reader.result
             UNOFFICIAL_FILE_NAME =fileName;
-            plotter();
+            plotter(init=true);
         }, false);
 
         if (file) {

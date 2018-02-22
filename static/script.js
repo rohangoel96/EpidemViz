@@ -367,6 +367,10 @@ function geoMapHandler(mapConfig, trimmingBool=true) {
                 })
             }
         })
+
+        if(map.hasLayer(markers)){
+            map.removeLayer(markers)
+        }
         map.addLayer(markers);
         
         map.on('click', function(e) {
@@ -375,7 +379,7 @@ function geoMapHandler(mapConfig, trimmingBool=true) {
             data.forEach(function(item){
                 if (item.date >= startDate && item.date <= endDate && item.location.length > 0) {
                     item.location.forEach(function(location, ind) {
-                        if(parseFloat(item.confidence[ind]) >= confidenceFilter && getDistanceFromLatLonInKm(location, popLocation) < getPopUpTriggerDistance()){
+                        if(parseFloat(item.confidence[ind]) >= confidenceFilter && getDistanceFromLatLonInKm(location, popLocation) < getPopUpTriggerDistance() && (item.reliability[ind] == mapDataSelector.toLowerCase() || mapDataSelector == "BOTH")){
                            var iconShape = '<i class="icon-'+(NotChromeBrowser ? "circle" : (item.reliability[ind] == "official" ? "circle" : "rhombus"))+'"></i>'
                            popupText += "<span style='color:"+sunburstColorsCombined[item.key.replace(new RegExp('-', 'g'), "_")]+"'>"+iconShape+"</span> "+"Date: "+timeDisplayFormat(item.date)+" ; Conf.: "+parseFloat(item.confidence[ind]).toFixed(2)+" ; <a href='javascript:void(0);' onclick='markerModalHandler(\""+item.article[ind]+"\");return false;'>View <i class='icon-article'></i></a><br>"
                         }
@@ -399,7 +403,7 @@ function processedArticleData(data){
     var articleDataDict = {}
     if(data){
         data.forEach(function(tuple){
-            articleDataDict[tuple["A"]] = tuple
+            articleDataDict[tuple["id"]] = tuple
         })
     }
     return articleDataDict
@@ -1366,10 +1370,10 @@ function markerModalHandler(articleID){
     var article = articleData[articleID];
     $("#markerPopUpModal .modal-content").empty();
     $("#markerPopUpModal .modal-content").append("<button onclick='closeMarkerModal();' class='close' aria-label='Close' ><span aria-hidden='true'>&times;</span></button>")
-    $("#markerPopUpModal .modal-content").append("<h2>"+article["B"]+"</h2>")
-    $("#markerPopUpModal .modal-content").append("<h4>"+article["D"]+"</h4>")
-    $("#markerPopUpModal .modal-content").append("<a href='"+article["C"]+"' target='_blank'><h4>Document Source</h4></a>")
-    $("#markerPopUpModal .modal-content").append("<p>"+article["E"]+"</p>")
+    $("#markerPopUpModal .modal-content").append("<h2>"+article["title"]+"</h2>")
+    $("#markerPopUpModal .modal-content").append("<h4>"+article["source"]+"</h4>")
+    $("#markerPopUpModal .modal-content").append("<a href='"+article["url"]+"' target='_blank'><h4>Document Source</h4></a>")
+    $("#markerPopUpModal .modal-content").append("<p>"+article["text"]+"</p>")
     $("#markerPopUpModal").modal("show")
 }
 

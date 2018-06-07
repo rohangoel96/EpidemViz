@@ -328,12 +328,12 @@ function geoMapHandler(mapConfig, trimmingBool=true) {
             heatmapLocationData.push([dataLocationTuple[0], dataLocationTuple[1], dataLocationDict[dataLocString]/maxDataLocationCount]);
         }
         var heat = L.heatLayer(heatmapLocationData, {
-            radius: 10,
+            radius: 8,
             minOpacity: 0.35,
             maxZoom: 5,
             blur: 7,
             max: 1,
-            gradient: {0.1: "yellow", 0.3: 'red', 0.6: 'lime', 0.9: 'blue'},
+            gradient: {0.1:"#4B0082", 0.25: '#0000FF', 0.4: "#00FF00", 0.6:"#FFCC00", 0.7: '#FF7F00', 0.9: "#FF0000"},
         }) // https://github.com/Leaflet/Leaflet.heat
         heatMap.addLayer(heat)
         map.addLayer(heatMap)
